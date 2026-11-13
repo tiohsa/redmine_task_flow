@@ -1,0 +1,68 @@
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.task-flow-root {
+  font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.task-flow-root *,
+.task-flow-root *::before,
+.task-flow-root *::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: #e2e8f0;
+}
+
+.task-flow-root button,
+.task-flow-root input,
+.task-flow-root select,
+.task-flow-root textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.task-flow-root button {
+  cursor: pointer;
+  background-color: transparent;
+}
+
+.task-flow-root .canvas-grid {
+  background-color: #f8fafc;
+}
+
+.task-flow-root .react-flow__node {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.task-flow-root .react-flow__handle {
+  width: 14px;
+  height: 14px;
+}
+
+.task-flow-root ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.task-flow-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-flow-root ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.task-flow-root ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
