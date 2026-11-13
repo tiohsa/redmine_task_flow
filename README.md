@@ -52,3 +52,4 @@ Or inside the Docker Compose +redmine+ container (from +plugins/redmine_task_flo
   docker compose -f ../../docker-compose.yml exec -e RAILS_ENV=test redmine bundle exec rails test plugins/redmine_task_flow/test
 
 Browser verification against a running Redmine instance (e.g. +http://localhost:3000+) should also be performed for UI flows, persistence, and permission checks.
+# redmine_task_flow
