@@ -1,0 +1,2100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redmine Task Flow - チケット一括フロー作成モック</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      user-select: none;
+      overflow: hidden;
+    }
+    input, textarea, select {
+      user-select: text;
+    }
+    /* ドットグリッド背景（React Flow風） */
+    .canvas-grid {
+      background-color: #f8fafc;
+      background-image: radial-gradient(#cbd5e1 1.25px, transparent 1.25px);
+      background-size: 20px 20px;
+    }
+    /* エッジのアニメーション */
+    @keyframes dashFlow {
+      to {
+        stroke-dashoffset: -16;
+      }
+    }
+    .edge-animated {
+      stroke-dasharray: 5, 3;
+      animation: dashFlow 0.8s linear infinite;
+    }
+    /* カスタムスクロールバー */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col">
+
+  <!-- Redmine 風トップヘッダー -->
+  <header class="bg-[#3E5B76] text-white shadow-sm z-30 shrink-0">
+    <div class="px-4 py-1.5 bg-[#2C4053] text-xs flex items-center justify-between text-slate-200">
+      <div class="flex items-center space-x-3">
+        <span class="font-semibold tracking-wide">Redmine</span>
+        <span>›</span>
+        <span>ECサイトリニューアル基盤 (ec-renewal)</span>
+      </div>
+      <div class="flex items-center space-x-3">
+        <span class="bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 px-2 py-0.5 rounded text-[11px]">
+          Prototype Mock v1.0
+        </span>
+        <span>ログイン: 山田 太郎</span>
+      </div>
+    </div>
+    <div class="px-4 pt-2 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center space-x-3">
+        <h1 class="text-base font-bold tracking-tight flex items-center gap-2 pb-2">
+          <svg class="w-5 h-5 text-sky-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+          </svg>
+          フローからチケット一括作成
+        </h1>
+        <!-- Redmine プロジェクトタブ風 -->
+        <nav class="hidden md:flex items-end space-x-1 text-xs font-medium self-end">
+          <span class="px-3 py-1.5 rounded-t bg-[#4e7090] text-slate-200 cursor-default">概要</span>
+          <span class="px-3 py-1.5 rounded-t bg-[#4e7090] text-slate-200 cursor-default">チケット</span>
+          <span class="px-3 py-1.5 rounded-t bg-[#4e7090] text-slate-200 cursor-default">ガントチャート</span>
+          <span class="px-3 py-1.5 rounded-t bg-slate-100 text-slate-900 font-bold shadow-sm">フロー作成</span>
+        </nav>
+      </div>
+
+      <!-- アクションボタン群 -->
+      <div class="flex items-center gap-2 pb-2">
+        <button id="btn-export-json" class="px-2.5 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20 text-white rounded transition flex items-center gap-1.5" title="現在のフローをJSONとして確認・保存">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          JSON出力
+        </button>
+        <button id="btn-reset-sample" class="px-2.5 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/20 text-white rounded transition">
+          サンプル初期化
+        </button>
+        <button id="btn-bulk-create" class="px-3.5 py-1.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Redmineに一括登録 (<span id="node-count-badge">0</span>件)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインワークスペース（左：フローキャンバス / 右：属性インスペクタ） -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- 左側：キャンバスエリア -->
+    <main class="flex-1 relative overflow-hidden flex flex-col">
+
+      <!-- フローティングツールバー -->
+      <div class="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 bg-white/95 backdrop-blur border border-slate-200 shadow-md rounded-xl p-1.5">
+        <button id="btn-add-task" class="px-2.5 py-1.5 text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white rounded-lg transition flex items-center gap-1.5 shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          タスク追加
+        </button>
+        <button id="btn-add-group" class="px-2.5 py-1.5 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg transition flex items-center gap-1.5" title="子チケットをまとめる親チケット枠を追加">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" stroke-dasharray="3 2"/></svg>
+          親グループ枠
+        </button>
+        <div class="h-5 w-px bg-slate-200 mx-0.5"></div>
+        <button id="btn-auto-layout" class="px-2.5 py-1.5 text-xs font-medium bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg transition flex items-center gap-1.5" title="左から右へ階層順に自動整列">
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h14"/></svg>
+          左→右 自動整列
+        </button>
+        <button id="btn-recalc-dates" class="px-2.5 py-1.5 text-xs font-medium bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg transition flex items-center gap-1.5" title="上流タスクの期日から下流の開始・期日を自動再計算">
+          <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          日程自動伝播
+        </button>
+      </div>
+
+      <!-- 基準開始日コントロール -->
+      <div class="absolute top-3 right-3 z-20 hidden sm:flex items-center gap-2 bg-white/95 backdrop-blur border border-slate-200 shadow-sm rounded-xl px-3 py-1.5 text-xs">
+        <span class="text-slate-500 font-medium">フロー基準日:</span>
+        <input type="date" id="base-start-date" class="border border-slate-200 rounded px-2 py-0.5 text-slate-700 font-medium focus:outline-none focus:border-sky-500" />
+      </div>
+
+      <!-- インタラクティブキャンバス -->
+      <div id="flow-viewport" class="flex-1 w-full h-full canvas-grid relative overflow-hidden cursor-grab active:cursor-grabbing">
+        <!-- パン・ズーム対象レイヤー -->
+        <div id="flow-world" class="absolute top-0 left-0 origin-top-left" style="width: 4000px; height: 3000px;">
+          <!-- 親グループ枠レイヤー（最背面） -->
+          <div id="groups-layer" class="absolute inset-0 pointer-events-none"></div>
+
+          <!-- SVG エッジレイヤー -->
+          <svg id="edges-svg" class="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+              </marker>
+              <marker id="arrowhead-selected" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#0284c7" />
+              </marker>
+              <marker id="arrowhead-preview" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#0ea5e9" />
+              </marker>
+            </defs>
+            <g id="edges-group" class="pointer-events-auto"></g>
+            <!-- ドラッグ接続中の仮エッジ -->
+            <path id="temp-edge-path" d="" fill="none" stroke="#0ea5e9" stroke-width="2.5" class="edge-animated hidden" marker-end="url(#arrowhead-preview)" />
+          </svg>
+
+          <!-- エッジ上のラグ日数バッジレイヤー -->
+          <div id="edge-badges-layer" class="absolute inset-0 pointer-events-none"></div>
+
+          <!-- タスクノードレイヤー -->
+          <div id="nodes-layer" class="absolute inset-0 pointer-events-none"></div>
+        </div>
+      </div>
+
+      <!-- 左下：操作ガイド＆ズームコントロール -->
+      <div class="absolute bottom-3 left-3 z-20 flex items-center gap-2">
+        <div class="flex items-center bg-white/95 backdrop-blur border border-slate-200 shadow-sm rounded-xl p-1 text-xs">
+          <button id="btn-zoom-out" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600" title="縮小">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>
+          </button>
+          <span id="zoom-label" class="px-2 font-mono text-slate-600 min-w-[48px] text-center">100%</span>
+          <button id="btn-zoom-in" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600" title="拡大">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          </button>
+          <div class="h-4 w-px bg-slate-200 mx-1"></div>
+          <button id="btn-fit-view" class="px-2 py-1 hover:bg-slate-100 rounded-lg text-slate-600 font-medium" title="全体を表示">
+            Fit
+          </button>
+        </div>
+
+        <div class="hidden lg:flex items-center gap-3 bg-white/90 backdrop-blur border border-slate-200 shadow-sm rounded-xl px-3 py-1.5 text-[11px] text-slate-500">
+          <span><kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono">Tab</kbd> 右に後続追加</span>
+          <span><kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono">Enter</kbd> 下に並列追加</span>
+          <span><kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono">右●ドラッグ</kbd> 先行・後続接続</span>
+          <span><kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono">Del</kbd> 削除</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右側：チケット属性インスペクタ -->
+    <aside id="inspector-panel" class="w-80 sm:w-96 bg-white border-l border-slate-200 shadow-lg z-20 flex flex-col shrink-0 transition-all">
+      <!-- インスペクタヘッダー -->
+      <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <span id="inspector-subtitle" class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Inspector</span>
+          <h2 id="inspector-title" class="text-sm font-bold text-slate-800">チケット属性編集</h2>
+        </div>
+        <button id="btn-delete-selected" class="hidden px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition">
+          削除
+        </button>
+      </div>
+
+      <!-- 未選択時のプレースホルダー -->
+      <div id="inspector-empty" class="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-400">
+        <svg class="w-12 h-12 mb-3 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+        </svg>
+        <p class="text-sm font-medium text-slate-600">ノードまたは矢印を選択してください</p>
+        <p class="text-xs mt-1 leading-relaxed">
+          左のキャンバスでタスクをクリックすると、トラッカー・担当者・工数・日程・必須カスタムフィールドを編集できます。
+        </p>
+      </div>
+
+      <!-- エッジ（依存関係）選択時のフォーム -->
+      <div id="inspector-edge-form" class="hidden flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl text-xs text-sky-900 space-y-1">
+          <div class="font-bold flex items-center gap-1.5">
+            <span>先行・後続関係 (precedes)</span>
+          </div>
+          <p class="text-sky-700">先行チケット完了後、待機日数（delay）を経過してから後続チケットを開始します。</p>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[11px]">先行タスク (Source)</span>
+            <span id="edge-source-name" class="font-semibold text-slate-800"></span>
+          </div>
+          <div class="flex justify-center text-slate-400">↓</div>
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[11px]">後続タスク (Target)</span>
+            <span id="edge-target-name" class="font-semibold text-slate-800"></span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">
+            待機日数 / ラグ (IssueRelation#delay)
+          </label>
+          <div class="flex items-center gap-2">
+            <input type="number" id="edge-delay-input" min="0" max="60" class="w-24 border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:border-sky-500" />
+            <span class="text-xs text-slate-500">日（0 = 翌日から着手）</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ノード（タスク / 親グループ）編集フォーム -->
+      <div id="inspector-node-form" class="hidden flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+
+        <!-- バリデーション警告バナー -->
+        <div id="node-validation-alert" class="hidden p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs space-y-1">
+          <div class="font-bold">入力エラーがあります</div>
+          <ul id="node-validation-list" class="list-disc pl-4 space-y-0.5"></ul>
+        </div>
+
+        <!-- 親グループ所属表示 -->
+        <div id="node-parent-banner" class="hidden p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-800 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] uppercase font-bold text-indigo-500 block">親チケット (parent_issue_id)</span>
+            <span id="node-parent-name" class="font-semibold"></span>
+          </div>
+          <button id="btn-detach-parent" class="text-[11px] px-2 py-1 bg-white border border-indigo-200 rounded hover:bg-indigo-100 text-indigo-700">
+            枠から外す
+          </button>
+        </div>
+
+        <!-- 題名 -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">
+            題名 (Subject) <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" id="field-subject" placeholder="例: 決済APIの設計書作成" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sky-500" />
+        </div>
+
+        <!-- トラッカー & ステータス -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">
+              トラッカー <span class="text-rose-500">*</span>
+            </label>
+            <select id="field-tracker" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500"></select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">ステータス</label>
+            <select id="field-status" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500"></select>
+          </div>
+        </div>
+
+        <!-- 優先度 & 担当者 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">優先度</label>
+            <select id="field-priority" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500"></select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">担当者</label>
+            <select id="field-assignee" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500"></select>
+          </div>
+        </div>
+
+        <!-- 対象バージョン & 予定工数 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div id="wrap-version">
+            <label class="block font-semibold text-slate-700 mb-1">対象バージョン</label>
+            <select id="field-version" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500"></select>
+          </div>
+          <div id="wrap-estimated-hours">
+            <label class="block font-semibold text-slate-700 mb-1">予定工数 (h)</label>
+            <input type="number" id="field-estimated-hours" min="0" step="0.5" placeholder="8.0" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500" />
+          </div>
+        </div>
+
+        <!-- 日程（開始日・期日） -->
+        <div id="wrap-dates" class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-700">スケジュール日程</span>
+            <label id="wrap-date-lock" class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-600">
+              <input type="checkbox" id="field-lock-dates" class="rounded text-sky-600 focus:ring-sky-500" />
+              <span>手動日程で固定（自動伝播しない）</span>
+            </label>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">開始日</label>
+              <input type="date" id="field-start-date" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-sky-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">期日</label>
+              <input type="date" id="field-due-date" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-sky-500" />
+            </div>
+          </div>
+          <p id="group-date-hint" class="hidden text-[11px] text-indigo-600">
+            ※ 親チケットは Redmine 標準仕様により子チケットの期間・工数から自動集計されます。
+          </p>
+        </div>
+
+        <!-- トラッカー連動カスタムフィールド -->
+        <div id="custom-fields-section" class="space-y-2.5 pt-1 border-t border-slate-200">
+          <div class="font-semibold text-slate-700 flex items-center justify-between">
+            <span>カスタムフィールド</span>
+            <span class="text-[10px] text-slate-400 font-normal">トラッカー連動</span>
+          </div>
+          <div id="custom-fields-container" class="space-y-2.5"></div>
+        </div>
+
+        <!-- 説明 -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">説明 (Description)</label>
+          <textarea id="field-description" rows="3" placeholder="作業内容や完了条件（Definition of Done）を記入..." class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-sky-500"></textarea>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- トースト通知コンテナ -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- モーダル（一括登録結果 / JSONエクスポート） -->
+  <div id="modal-backdrop" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h3 id="modal-title" class="text-base font-bold text-slate-800">処理結果</h3>
+        <button id="modal-close" class="p-1 rounded-lg hover:bg-slate-200 text-slate-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="modal-body" class="p-5 overflow-y-auto text-sm space-y-4"></div>
+      <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-end gap-2">
+        <button id="modal-copy-btn" class="hidden px-3.5 py-1.5 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition">
+          JSONをコピー
+        </button>
+        <button id="modal-ok-btn" class="px-4 py-1.5 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-lg transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * Redmine Task Flow モックアプリケーション
+     * - 左から右 (LR) への依存関係 (precedes) フロー構築
+     * - 1対多（分岐）・多対1（合流）・循環依存ブロック
+     * - 親グループ枠 (Group Node -> parent_issue_id)
+     * - トラッカー別有効フィールド＆必須カスタムフィールド制御
+     * - 上流→下流の日程自動伝播＆トポロジカルソート一括登録シミュレーション
+     * ============================================================================
+     */
+
+    // ----------------------------------------------------------------------------
+    // 1. Redmine マスタデータ定義（Rails Bootstrap API 相当）
+    // ----------------------------------------------------------------------------
+    const REDMINE_MASTER = {
+      project: { id: 12, identifier: 'ec-renewal', name: 'ECサイトリニューアル基盤' },
+      trackers: [
+        {
+          id: 1,
+          name: '機能',
+          color: 'bg-sky-100 text-sky-800 border-sky-300',
+          dot: 'bg-sky-500',
+          disabledFields: [],
+          customFields: [
+            { id: 101, name: '対象コンポーネント', type: 'list', required: true, options: ['フロントエンド', 'バックエンドAPI', '決済基盤', 'インフラ'] }
+          ]
+        },
+        {
+          id: 2,
+          name: 'タスク',
+          color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+          dot: 'bg-emerald-500',
+          disabledFields: [],
+          customFields: []
+        },
+        {
+          id: 3,
+          name: 'レビュー/QA',
+          color: 'bg-amber-100 text-amber-800 border-amber-300',
+          dot: 'bg-amber-500',
+          disabledFields: ['fixed_version_id'], // Redmineトラッカー設定の無効化フィールド再現
+          customFields: [
+            { id: 102, name: 'テスト環境', type: 'list', required: true, options: ['STG環境', 'QA専用環境', 'ローカル検証'] }
+          ]
+        },
+        {
+          id: 4,
+          name: 'バグ',
+          color: 'bg-rose-100 text-rose-800 border-rose-300',
+          dot: 'bg-rose-500',
+          disabledFields: [],
+          customFields: []
+        }
+      ],
+      statuses: [
+        { id: 1, name: '新規' },
+        { id: 2, name: '進行中' },
+        { id: 3, name: 'レビュー待ち' }
+      ],
+      priorities: [
+        { id: 1, name: '低め' },
+        { id: 2, name: '通常' },
+        { id: 3, name: '高め' },
+        { id: 4, name: '急いで' }
+      ],
+      members: [
+        { id: null, name: '（未割当）', short: '未', avatarBg: 'bg-slate-200 text-slate-500' },
+        { id: 10, name: '山田 太郎 (自分)', short: '山田', avatarBg: 'bg-sky-600 text-white' },
+        { id: 11, name: '佐藤 花子', short: '佐藤', avatarBg: 'bg-indigo-600 text-white' },
+        { id: 12, name: '鈴木 健太', short: '鈴木', avatarBg: 'bg-emerald-600 text-white' },
+        { id: 13, name: '高橋 美咲', short: '高橋', avatarBg: 'bg-amber-600 text-white' }
+      ],
+      versions: [
+        { id: null, name: '（なし）' },
+        { id: 5, name: 'v1.0 決済機能リリース' },
+        { id: 6, name: 'v1.1 会員マイページ刷新' }
+      ]
+    };
+
+    // ----------------------------------------------------------------------------
+    // 2. アプリケーション状態（State）
+    // ----------------------------------------------------------------------------
+    const NODE_WIDTH = 256;
+    const NODE_HEIGHT = 112;
+
+    const state = {
+      baseStartDate: '2026-11-16',
+      viewport: { x: 60, y: 90, zoom: 1 },
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      nodes: [],
+      edges: [],
+      // ドラッグ操作用一時状態
+      interaction: {
+        mode: null, // 'pan' | 'dragNode' | 'connect' | 'resizeGroup'
+        startX: 0,
+        startY: 0,
+        origX: 0,
+        origY: 0,
+        targetId: null,
+        connectSourceId: null,
+        mouseWorldX: 0,
+        mouseWorldY: 0
+      }
+    };
+
+    // ----------------------------------------------------------------------------
+    // 3. ユーティリティ関数（日付・トポロジカルソート・循環検知）
+    // ----------------------------------------------------------------------------
+    function generateId(prefix = 'node') {
+      return `${prefix}_${Math.random().toString(36).substring(2, 9)}`;
+    }
+
+    function addDays(dateStr, days) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    function formatShortDate(dateStr) {
+      if (!dateStr) return '--/--';
+      const parts = dateStr.split('-');
+      return `${Number(parts[1])}/${Number(parts[2])}`;
+    }
+
+    /**
+     * 循環依存チェック（sourceId -> targetId を追加した場合に閉路ができるか）
+     * targetId から出発して有向エッジを辿り、sourceId に到達できれば循環
+     */
+    function wouldCreateCycle(sourceId, targetId) {
+      if (sourceId === targetId) return true;
+      const visited = new Set();
+      const stack = [targetId];
+      while (stack.length > 0) {
+        const curr = stack.pop();
+        if (curr === sourceId) return true;
+        if (visited.has(curr)) continue;
+        visited.add(curr);
+        state.edges.forEach(e => {
+          if (e.source === curr) stack.push(e.target);
+        });
+      }
+      return false;
+    }
+
+    /**
+     * トポロジカルソート（Kahnのアルゴリズム）
+     */
+    function topologicalSortTasks() {
+      const taskNodes = state.nodes.filter(n => n.type === 'taskNode');
+      const inDegree = new Map();
+      const adj = new Map();
+
+      taskNodes.forEach(n => {
+        inDegree.set(n.id, 0);
+        adj.set(n.id, []);
+      });
+
+      state.edges.forEach(e => {
+        if (adj.has(e.source) && inDegree.has(e.target)) {
+          adj.get(e.source).push(e);
+          inDegree.set(e.target, inDegree.get(e.target) + 1);
+        }
+      });
+
+      const queue = [];
+      inDegree.forEach((deg, id) => {
+        if (deg === 0) queue.push(id);
+      });
+
+      const sortedIds = [];
+      while (queue.length > 0) {
+        const currId = queue.shift();
+        sortedIds.push(currId);
+        for (const edge of adj.get(currId)) {
+          const nextDeg = inDegree.get(edge.target) - 1;
+          inDegree.set(edge.target, nextDeg);
+          if (nextDeg === 0) queue.push(edge.target);
+        }
+      }
+      return sortedIds;
+    }
+
+    /**
+     * 左→右への日程自動伝播 & 親グループ枠の期間・工数ロールアップ集計
+     */
+    function propagateSchedules(silent = false) {
+      const sortedIds = topologicalSortTasks();
+      const nodeMap = new Map(state.nodes.map(n => [n.id, n]));
+
+      // 入ってくるエッジのマップ
+      const incomingMap = new Map();
+      state.edges.forEach(e => {
+        if (!incomingMap.has(e.target)) incomingMap.set(e.target, []);
+        incomingMap.get(e.target).push(e);
+      });
+
+      sortedIds.forEach(id => {
+        const node = nodeMap.get(id);
+        if (!node || node.type !== 'taskNode') return;
+
+        const incoming = incomingMap.get(id) || [];
+        let calculatedStart = state.baseStartDate;
+
+        if (incoming.length > 0) {
+          // 複数の先行タスクがある（合流）場合、最も遅い (先行期日 + 1 + delay) を採用
+          let maxStart = '';
+          incoming.forEach(edge => {
+            const srcNode = nodeMap.get(edge.source);
+            if (srcNode && srcNode.data.dueDate) {
+              const candidateStart = addDays(srcNode.data.dueDate, 1 + (edge.delay || 0));
+              if (!maxStart || candidateStart > maxStart) {
+                maxStart = candidateStart;
+              }
+            }
+          });
+          if (maxStart) calculatedStart = maxStart;
+        }
+
+        if (!node.data.lockDates) {
+          node.data.startDate = calculatedStart;
+          // 予定工数（8h = 1日換算、最低1日）から期日を算出
+          const hours = Number(node.data.estimatedHours) || 8;
+          const durationDays = Math.max(1, Math.ceil(hours / 8));
+          node.data.dueDate = addDays(calculatedStart, durationDays - 1);
+        }
+      });
+
+      // 親グループノードの集計（Redmine標準の親子ロールアップ再現）
+      state.nodes.filter(n => n.type === 'groupNode').forEach(group => {
+        const children = state.nodes.filter(n => n.type === 'taskNode' && n.parentId === group.id);
+        if (children.length === 0) {
+          group.data.estimatedHours = 0;
+          group.data.startDate = state.baseStartDate;
+          group.data.dueDate = state.baseStartDate;
+          return;
+        }
+        let totalHours = 0;
+        let minStart = '';
+        let maxDue = '';
+        children.forEach(c => {
+          totalHours += Number(c.data.estimatedHours) || 0;
+          if (c.data.startDate && (!minStart || c.data.startDate < minStart)) minStart = c.data.startDate;
+          if (c.data.dueDate && (!maxDue || c.data.dueDate > maxDue)) maxDue = c.data.dueDate;
+        });
+        group.data.estimatedHours = totalHours;
+        group.data.startDate = minStart || state.baseStartDate;
+        group.data.dueDate = maxDue || state.baseStartDate;
+      });
+
+      if (!silent) {
+        showToast('上流から下流へ日程を自動再計算しました', 'info');
+      }
+    }
+
+    /**
+     * 左→右（LR）自動レイアウト整列（レイヤー階層割り当て）
+     */
+    function autoLayoutLeftToRight() {
+      const sortedIds = topologicalSortTasks();
+      const nodeMap = new Map(state.nodes.map(n => [n.id, n]));
+      const rankMap = new Map();
+
+      // 各ノードの深さ（列番号）を算出
+      sortedIds.forEach(id => {
+        const incoming = state.edges.filter(e => e.target === id);
+        if (incoming.length === 0) {
+          rankMap.set(id, 0);
+        } else {
+          let maxParentRank = 0;
+          incoming.forEach(e => {
+            const r = rankMap.get(e.source) ?? 0;
+            if (r > maxParentRank) maxParentRank = r;
+          });
+          rankMap.set(id, maxParentRank + 1);
+        }
+      });
+
+      // 列ごとにグルーピング
+      const columns = new Map();
+      sortedIds.forEach(id => {
+        const rank = rankMap.get(id) ?? 0;
+        if (!columns.has(rank)) columns.set(rank, []);
+        columns.get(rank).push(nodeMap.get(id));
+      });
+
+      const X_GAP = 340;
+      const Y_GAP = 148;
+      const START_X = 60;
+      const START_Y = 80;
+
+      columns.forEach((colNodes, rank) => {
+        // 既存Y座標順を維持して線の交差を最小化
+        colNodes.sort((a, b) => a.y - b.y);
+        colNodes.forEach((node, idx) => {
+          node.x = START_X + rank * X_GAP;
+          node.y = START_Y + idx * Y_GAP;
+        });
+      });
+
+      // 親グループ枠を内包する子ノードに合わせてフィットさせる
+      fitGroupsToChildren();
+      renderAll();
+      showToast('左→右の階層構造に自動整列しました', 'success');
+    }
+
+    function fitGroupsToChildren() {
+      state.nodes.filter(n => n.type === 'groupNode').forEach(group => {
+        const children = state.nodes.filter(n => n.type === 'taskNode' && n.parentId === group.id);
+        if (children.length === 0) return;
+        const padX = 24;
+        const padTop = 44;
+        const padBottom = 24;
+        const minX = Math.min(...children.map(c => c.x));
+        const minY = Math.min(...children.map(c => c.y));
+        const maxX = Math.max(...children.map(c => c.x + NODE_WIDTH));
+        const maxY = Math.max(...children.map(c => c.y + NODE_HEIGHT));
+
+        group.x = minX - padX;
+        group.y = minY - padTop;
+        group.width = (maxX - minX) + padX * 2;
+        group.height = (maxY - minY) + padTop + padBottom;
+      });
+    }
+
+    // ----------------------------------------------------------------------------
+    // 4. サンプル初期データ（分岐・合流・親グループ枠を含む実践的なフロー）
+    // ----------------------------------------------------------------------------
+    function loadSampleFlow() {
+      state.baseStartDate = '2026-11-16';
+      document.getElementById('base-start-date').value = state.baseStartDate;
+
+      const grpId = 'group_backend';
+      state.nodes = [
+        {
+          id: grpId,
+          type: 'groupNode',
+          x: 376,
+          y: 36,
+          width: 644,
+          height: 312,
+          data: {
+            subject: '【親】決済API・バックエンド実装一式',
+            trackerId: 1,
+            statusId: 1,
+            priorityId: 2,
+            assignedToId: 10,
+            versionId: 5,
+            estimatedHours: 24,
+            startDate: '2026-11-18',
+            dueDate: '2026-11-20',
+            description: '決済機能に関するAPI設計・実装をまとめた親チケット',
+            customFields: { 101: '決済基盤' },
+            createdIssueId: null
+          }
+        },
+        {
+          id: 'task_1',
+          type: 'taskNode',
+          parentId: null,
+          x: 60,
+          y: 140,
+          data: {
+            subject: '要件定義・決済シーケンス確定',
+            trackerId: 2,
+            statusId: 1,
+            priorityId: 3,
+            assignedToId: 10,
+            versionId: 5,
+            estimatedHours: 16,
+            startDate: '2026-11-16',
+            dueDate: '2026-11-17',
+            lockDates: false,
+            description: '外部決済代行会社とのWebhook仕様およびエラーコード表の確定。',
+            customFields: {},
+            createdIssueId: null
+          }
+        },
+        {
+          id: 'task_2',
+          type: 'taskNode',
+          parentId: grpId,
+          x: 400,
+          y: 80,
+          data: {
+            subject: '決済DBテーブル設計・マイグレーション',
+            trackerId: 1,
+            statusId: 1,
+            priorityId: 2,
+            assignedToId: 12,
+            versionId: 5,
+            estimatedHours: 8,
+            startDate: '2026-11-18',
+            dueDate: '2026-11-18',
+            lockDates: false,
+            description: 'orders / payment_transactions テーブルのDDL作成。',
+            customFields: { 101: '決済基盤' },
+            createdIssueId: null
+          }
+        },
+        {
+          id: 'task_3',
+          type: 'taskNode',
+          parentId: null,
+          x: 400,
+          y: 380,
+          data: {
+            subject: 'チェックアウト画面 UIモック実装',
+            trackerId: 1,
+            statusId: 1,
+            priorityId: 2,
+            assignedToId: 11,
+            versionId: 5,
+            estimatedHours: 16,
+            startDate: '2026-11-18',
+            dueDate: '2026-11-19',
+            lockDates: false,
+            description: 'クレジットカード入力フォームおよびバリデーションUI。',
+            customFields: { 101: 'フロントエンド' },
+            createdIssueId: null
+          }
+        },
+        {
+          id: 'task_4',
+          type: 'taskNode',
+          parentId: grpId,
+          x: 740,
+          y: 80,
+          data: {
+            subject: '決済与信・売上確定API実装',
+            trackerId: 1,
+            statusId: 1,
+            priorityId: 3,
+            assignedToId: 12,
+            versionId: 5,
+            estimatedHours: 16,
+            startDate: '2026-11-19',
+            dueDate: '2026-11-20',
+            lockDates: false,
+            description: 'リトライ制御および冪等性キーの実装を含む。',
+            customFields: { 101: '決済基盤' },
+            createdIssueId: null
+          }
+        },
+        {
+          id: 'task_5',
+          type: 'taskNode',
+          parentId: null,
+          x: 1080,
+          y: 220,
+          data: {
+            subject: 'フロント・API結合 E2Eテスト',
+            trackerId: 3,
+            statusId: 1,
+            priorityId: 3,
+            assignedToId: 13,
+            versionId: null,
+            estimatedHours: 16,
+            startDate: '2026-11-21',
+            dueDate: '2026-11-22',
+            lockDates: false,
+            description: '正常決済・残高不足・タイムアウトの異常系シナリオ検証。',
+            customFields: { 102: 'STG環境' },
+            createdIssueId: null
+          }
+        }
+      ];
+
+      state.edges = [
+        { id: 'edge_1', source: 'task_1', target: 'task_2', delay: 0 }, // 分岐1
+        { id: 'edge_2', source: 'task_1', target: 'task_3', delay: 0 }, // 分岐2
+        { id: 'edge_3', source: 'task_2', target: 'task_4', delay: 0 },
+        { id: 'edge_4', source: 'task_4', target: 'task_5', delay: 0 }, // 合流1
+        { id: 'edge_5', source: 'task_3', target: 'task_5', delay: 1 }  // 合流2（+1日待機）
+      ];
+
+      state.selectedNodeId = 'task_1';
+      state.selectedEdgeId = null;
+      state.viewport = { x: 40, y: 50, zoom: 0.92 };
+      propagateSchedules(true);
+      renderAll();
+    }
+
+    // ----------------------------------------------------------------------------
+    // 5. バリデーションロジック
+    // ----------------------------------------------------------------------------
+    function validateNode(node) {
+      const errors = [];
+      if (!node.data.subject || !node.data.subject.trim()) {
+        errors.push('題名が未入力です');
+      }
+      if (node.data.startDate && node.data.dueDate && node.data.startDate > node.data.dueDate) {
+        errors.push('開始日が期日より後の日付になっています');
+      }
+      const tracker = REDMINE_MASTER.trackers.find(t => t.id === Number(node.data.trackerId));
+      if (tracker && tracker.customFields) {
+        tracker.customFields.forEach(cf => {
+          if (cf.required) {
+            const val = node.data.customFields?.[cf.id];
+            if (!val || !String(val).trim()) {
+              errors.push(`必須カスタムフィールド「${cf.name}」が未入力です`);
+            }
+          }
+        });
+      }
+      return errors;
+    }
+
+    // ----------------------------------------------------------------------------
+    // 6. レンダリング関数（キャンバス・エッジ・ノード・インスペクタ）
+    // ----------------------------------------------------------------------------
+    function applyViewportTransform() {
+      const world = document.getElementById('flow-world');
+      world.style.transform = `translate(${state.viewport.x}px, ${state.viewport.y}px) scale(${state.viewport.zoom})`;
+      document.getElementById('zoom-label').textContent = `${Math.round(state.viewport.zoom * 100)}%`;
+    }
+
+    function renderAll() {
+      applyViewportTransform();
+      renderGroups();
+      renderEdges();
+      renderNodes();
+      renderInspector();
+      document.getElementById('node-count-badge').textContent = state.nodes.length;
+    }
+
+    function renderGroups() {
+      const container = document.getElementById('groups-layer');
+      container.innerHTML = '';
+
+      state.nodes.filter(n => n.type === 'groupNode').forEach(group => {
+        const isSelected = state.selectedNodeId === group.id;
+        const errors = validateNode(group);
+        const childCount = state.nodes.filter(n => n.type === 'taskNode' && n.parentId === group.id).length;
+
+        const el = document.createElement('div');
+        el.dataset.nodeId = group.id;
+        el.style.left = `${group.x}px`;
+        el.style.top = `${group.y}px`;
+        el.style.width = `${group.width || 420}px`;
+        el.style.height = `${group.height || 240}px`;
+
+        el.className = `pointer-events-auto absolute rounded-2xl border-2 border-dashed transition-shadow cursor-move flex flex-col justify-between ${
+          errors.length > 0
+            ? 'border-rose-400 bg-rose-50/30'
+            : isSelected
+            ? 'border-indigo-500 bg-indigo-50/40 shadow-md ring-2 ring-indigo-300/50'
+            : 'border-indigo-300/80 bg-indigo-50/25 hover:border-indigo-400'
+        }`;
+
+        el.innerHTML = `
+          <div class="px-3.5 py-2 flex items-center justify-between gap-2 bg-indigo-100/70 rounded-t-xl border-b border-indigo-200/60">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="px-1.5 py-0.5 text-[10px] font-bold bg-indigo-600 text-white rounded shrink-0">親チケット</span>
+              ${group.data.createdIssueId ? `<span class="text-xs font-mono font-bold text-emerald-700">#${group.data.createdIssueId}</span>` : ''}
+              <span class="text-xs font-bold text-indigo-950 truncate">${escapeHtml(group.data.subject || '（題名未入力）')}</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 text-[11px] text-indigo-700 font-medium">
+              <span>子: ${childCount}件</span>
+              <span>計 ${group.data.estimatedHours || 0}h</span>
+            </div>
+          </div>
+          <div class="px-3 py-1 text-[10px] text-indigo-400 flex justify-between items-center">
+            <span>※ タスクをこの枠内にドラッグすると子チケットになります</span>
+            <div data-resize-group="${group.id}" class="w-4 h-4 cursor-nwse-resize flex items-end justify-end text-indigo-400 hover:text-indigo-700" title="枠サイズ変更">
+              ◢
+            </div>
+          </div>
+        `;
+
+        container.appendChild(el);
+      });
+    }
+
+    function renderEdges() {
+      const svgGroup = document.getElementById('edges-group');
+      const badgesLayer = document.getElementById('edge-badges-layer');
+      svgGroup.innerHTML = '';
+      badgesLayer.innerHTML = '';
+
+      const nodeMap = new Map(state.nodes.map(n => [n.id, n]));
+
+      state.edges.forEach(edge => {
+        const src = nodeMap.get(edge.source);
+        const tgt = nodeMap.get(edge.target);
+        if (!src || !tgt) return;
+
+        // 右ハンドル中心 -> 左ハンドル中心
+        const x1 = src.x + NODE_WIDTH;
+        const y1 = src.y + NODE_HEIGHT / 2;
+        const x2 = tgt.x;
+        const y2 = tgt.y + NODE_HEIGHT / 2;
+
+        const dx = Math.max(60, Math.abs(x2 - x1) * 0.5);
+        const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+
+        const isSelected = state.selectedEdgeId === edge.id;
+
+        // クリック判定用の太い透明パス
+        const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        hitPath.setAttribute('d', pathD);
+        hitPath.setAttribute('fill', 'none');
+        hitPath.setAttribute('stroke', 'transparent');
+        hitPath.setAttribute('stroke-width', '16');
+        hitPath.style.cursor = 'pointer';
+        hitPath.dataset.edgeId = edge.id;
+
+        // 表示用パス
+        const visiblePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        visiblePath.setAttribute('d', pathD);
+        visiblePath.setAttribute('fill', 'none');
+        visiblePath.setAttribute('stroke', isSelected ? '#0284c7' : '#64748b');
+        visiblePath.setAttribute('stroke-width', isSelected ? '3' : '2');
+        visiblePath.setAttribute('marker-end', isSelected ? 'url(#arrowhead-selected)' : 'url(#arrowhead)');
+        visiblePath.style.pointerEvents = 'none';
+
+        svgGroup.appendChild(hitPath);
+        svgGroup.appendChild(visiblePath);
+
+        // エッジ中央のラベルバッジ（delay > 0 または選択時）
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        if (edge.delay > 0 || isSelected) {
+          const badge = document.createElement('button');
+          badge.dataset.edgeId = edge.id;
+          badge.style.left = `${midX}px`;
+          badge.style.top = `${midY}px`;
+          badge.className = `pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs border transition ${
+            isSelected
+              ? 'bg-sky-600 text-white border-sky-700'
+              : 'bg-white text-slate-700 border-slate-300 hover:border-sky-400'
+          }`;
+          badge.textContent = edge.delay > 0 ? `precedes +${edge.delay}d` : 'precedes';
+          badgesLayer.appendChild(badge);
+        }
+      });
+    }
+
+    function renderNodes() {
+      const container = document.getElementById('nodes-layer');
+      container.innerHTML = '';
+
+      state.nodes.filter(n => n.type === 'taskNode').forEach(node => {
+        const isSelected = state.selectedNodeId === node.id;
+        const errors = validateNode(node);
+        const tracker = REDMINE_MASTER.trackers.find(t => t.id === Number(node.data.trackerId)) || REDMINE_MASTER.trackers[0];
+        const assignee = REDMINE_MASTER.members.find(m => m.id === (node.data.assignedToId ? Number(node.data.assignedToId) : null)) || REDMINE_MASTER.members[0];
+
+        const el = document.createElement('div');
+        el.dataset.nodeId = node.id;
+        el.style.left = `${node.x}px`;
+        el.style.top = `${node.y}px`;
+        el.style.width = `${NODE_WIDTH}px`;
+        el.style.height = `${NODE_HEIGHT}px`;
+
+        el.className = `group pointer-events-auto absolute bg-white rounded-xl border-2 transition-shadow cursor-move flex flex-col justify-between select-none ${
+          errors.length > 0
+            ? 'border-rose-500 shadow-md ring-2 ring-rose-200'
+            : isSelected
+            ? 'border-sky-500 shadow-lg ring-2 ring-sky-200'
+            : 'border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md'
+        }`;
+
+        const issueBadge = node.data.createdIssueId
+          ? `<span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 font-mono font-bold rounded text-[10px]">#${node.data.createdIssueId}</span>`
+          : `<span class="text-[10px] font-mono text-slate-400">#NEW</span>`;
+
+        const errorBadge = errors.length > 0
+          ? `<span class="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center" title="${escapeHtml(errors.join('\n'))}">!</span>`
+          : '';
+
+        el.innerHTML = `
+          <!-- 左ハンドル（Target: 複数の先行タスクを受信可能） -->
+          <div data-handle-target="${node.id}" class="absolute -left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center cursor-crosshair z-10" title="先行タスクからの接続先 (Target)">
+            <div class="w-3 h-3 rounded-full bg-white border-2 border-slate-400 group-hover:border-sky-500 transition"></div>
+          </div>
+
+          <!-- カード上部：トラッカー＆チケット番号 -->
+          <div class="px-3 pt-2 pb-1 flex items-center justify-between gap-1.5">
+            <div class="flex items-center gap-1.5">
+              <span class="px-1.5 py-0.5 text-[10px] font-bold rounded border ${tracker.color}">
+                ${escapeHtml(tracker.name)}
+              </span>
+              ${node.parentId ? `<span class="text-[10px] text-indigo-600 font-semibold bg-indigo-50 px-1 rounded">子</span>` : ''}
+            </div>
+            <div class="flex items-center gap-1.5">
+              ${errorBadge}
+              ${issueBadge}
+            </div>
+          </div>
+
+          <!-- カード中央：題名（ダブルクリックでインライン編集可） -->
+          <div class="px-3 py-0.5 flex-1 flex items-center">
+            <div data-inline-subject="${node.id}" class="text-xs font-bold text-slate-800 line-clamp-2 leading-snug w-full ${!node.data.subject ? 'text-rose-400 italic' : ''}">
+              ${escapeHtml(node.data.subject || '（ダブルクリックで題名入力）')}
+            </div>
+          </div>
+
+          <!-- カード下部：担当者・工数・日程 -->
+          <div class="px-3 py-1.5 bg-slate-50/90 border-t border-slate-100 rounded-b-xl flex items-center justify-between text-[11px] text-slate-600">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="w-5 h-5 rounded-full ${assignee.avatarBg} text-[10px] font-bold flex items-center justify-center shrink-0">
+                ${escapeHtml(assignee.short)}
+              </span>
+              <span class="truncate text-[10px] text-slate-500">${escapeHtml(assignee.name.replace(' (自分)', ''))}</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 font-mono text-[10px]">
+              <span class="font-semibold text-slate-700">${node.data.estimatedHours || 0}h</span>
+              <span class="text-slate-400">|</span>
+              <span class="${node.data.lockDates ? 'text-amber-700 font-bold' : 'text-slate-500'}" title="${node.data.lockDates ? '手動日程固定中' : '自動計算日程'}">
+                ${node.data.lockDates ? '🔒' : ''}${formatShortDate(node.data.startDate)}-${formatShortDate(node.data.dueDate)}
+              </span>
+            </div>
+          </div>
+
+          <!-- 右ハンドル（Source: ドラッグで後続へ接続） -->
+          <div data-handle-source="${node.id}" class="absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center cursor-crosshair z-10" title="ドラッグして後続タスクへ接続 (Source)">
+            <div class="w-3.5 h-3.5 rounded-full bg-sky-500 border-2 border-white shadow-sm group-hover:scale-125 transition"></div>
+          </div>
+
+          <!-- クイック後続追加 '+' ボタン（ホバー時表示） -->
+          <button data-quick-add="${node.id}" class="opacity-0 group-hover:opacity-100 focus:opacity-100 absolute -right-9 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-sky-600 hover:bg-sky-700 text-white shadow-md flex items-center justify-center transition z-20" title="右隣に後続タスクを追加 (Tab)">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          </button>
+        `;
+
+        container.appendChild(el);
+      });
+    }
+
+    function renderInspector() {
+      const emptyEl = document.getElementById('inspector-empty');
+      const edgeFormEl = document.getElementById('inspector-edge-form');
+      const nodeFormEl = document.getElementById('inspector-node-form');
+      const deleteBtn = document.getElementById('btn-delete-selected');
+      const titleEl = document.getElementById('inspector-title');
+      const subtitleEl = document.getElementById('inspector-subtitle');
+
+      emptyEl.classList.add('hidden');
+      edgeFormEl.classList.add('hidden');
+      nodeFormEl.classList.add('hidden');
+      deleteBtn.classList.add('hidden');
+
+      // 1. エッジ選択時
+      if (state.selectedEdgeId) {
+        const edge = state.edges.find(e => e.id === state.selectedEdgeId);
+        if (!edge) return;
+        const src = state.nodes.find(n => n.id === edge.source);
+        const tgt = state.nodes.find(n => n.id === edge.target);
+
+        subtitleEl.textContent = 'Dependency Edge';
+        titleEl.textContent = '依存関係（先行・後続）の設定';
+        deleteBtn.classList.remove('hidden');
+        edgeFormEl.classList.remove('hidden');
+
+        document.getElementById('edge-source-name').textContent = src ? src.data.subject : edge.source;
+        document.getElementById('edge-target-name').textContent = tgt ? tgt.data.subject : edge.target;
+        document.getElementById('edge-delay-input').value = edge.delay || 0;
+        return;
+      }
+
+      // 2. ノード選択時
+      if (state.selectedNodeId) {
+        const node = state.nodes.find(n => n.id === state.selectedNodeId);
+        if (!node) return;
+
+        const isGroup = node.type === 'groupNode';
+        subtitleEl.textContent = isGroup ? 'Parent Issue Group' : 'Task Issue Node';
+        titleEl.textContent = isGroup ? '親チケット枠の属性編集' : 'チケット属性編集';
+        deleteBtn.classList.remove('hidden');
+        nodeFormEl.classList.remove('hidden');
+
+        // バリデーションエラー表示
+        const errors = validateNode(node);
+        const valAlert = document.getElementById('node-validation-alert');
+        const valList = document.getElementById('node-validation-list');
+        if (errors.length > 0) {
+          valAlert.classList.remove('hidden');
+          valList.innerHTML = errors.map(err => `<li>${escapeHtml(err)}</li>`).join('');
+        } else {
+          valAlert.classList.add('hidden');
+        }
+
+        // 親グループ所属バナー
+        const parentBanner = document.getElementById('node-parent-banner');
+        if (!isGroup && node.parentId) {
+          const parentNode = state.nodes.find(n => n.id === node.parentId);
+          parentBanner.classList.remove('hidden');
+          document.getElementById('node-parent-name').textContent = parentNode ? parentNode.data.subject : '親チケット';
+        } else {
+          parentBanner.classList.add('hidden');
+        }
+
+        // 各種セレクトボックス構築
+        populateSelect('field-tracker', REDMINE_MASTER.trackers, node.data.trackerId);
+        populateSelect('field-status', REDMINE_MASTER.statuses, node.data.statusId);
+        populateSelect('field-priority', REDMINE_MASTER.priorities, node.data.priorityId);
+        populateSelect('field-assignee', REDMINE_MASTER.members, node.data.assignedToId);
+        populateSelect('field-version', REDMINE_MASTER.versions, node.data.versionId);
+
+        document.getElementById('field-subject').value = node.data.subject || '';
+        document.getElementById('field-estimated-hours').value = node.data.estimatedHours ?? '';
+        document.getElementById('field-start-date').value = node.data.startDate || '';
+        document.getElementById('field-due-date').value = node.data.dueDate || '';
+        document.getElementById('field-lock-dates').checked = !!node.data.lockDates;
+        document.getElementById('field-description').value = node.data.description || '';
+
+        // トラッカー固有の disabled_core_fields 制御
+        const tracker = REDMINE_MASTER.trackers.find(t => t.id === Number(node.data.trackerId)) || REDMINE_MASTER.trackers[0];
+        const wrapVersion = document.getElementById('wrap-version');
+        if (tracker.disabledFields.includes('fixed_version_id')) {
+          wrapVersion.classList.add('opacity-40', 'pointer-events-none');
+        } else {
+          wrapVersion.classList.remove('opacity-40', 'pointer-events-none');
+        }
+
+        // 親グループノードの場合、日程と工数は子から自動集計のため Read-only 化
+        const estInput = document.getElementById('field-estimated-hours');
+        const startInput = document.getElementById('field-start-date');
+        const dueInput = document.getElementById('field-due-date');
+        const wrapDateLock = document.getElementById('wrap-date-lock');
+        const groupDateHint = document.getElementById('group-date-hint');
+
+        if (isGroup) {
+          estInput.disabled = true;
+          startInput.disabled = true;
+          dueInput.disabled = true;
+          wrapDateLock.classList.add('hidden');
+          groupDateHint.classList.remove('hidden');
+        } else {
+          estInput.disabled = false;
+          startInput.disabled = false;
+          dueInput.disabled = false;
+          wrapDateLock.classList.remove('hidden');
+          groupDateHint.classList.add('hidden');
+        }
+
+        // カスタムフィールド描画
+        renderCustomFields(node, tracker);
+        return;
+      }
+
+      // 3. 未選択時
+      subtitleEl.textContent = 'Inspector';
+      titleEl.textContent = 'チケット属性編集';
+      emptyEl.classList.remove('hidden');
+    }
+
+    function populateSelect(elId, items, selectedVal) {
+      const sel = document.getElementById(elId);
+      sel.innerHTML = items.map(item => {
+        const val = item.id === null ? '' : item.id;
+        const isSel = (item.id === null && !selectedVal) || (String(item.id) === String(selectedVal));
+        return `<option value="${val}" ${isSel ? 'selected' : ''}>${escapeHtml(item.name)}</option>`;
+      }).join('');
+    }
+
+    function renderCustomFields(node, tracker) {
+      const section = document.getElementById('custom-fields-section');
+      const container = document.getElementById('custom-fields-container');
+      const cfs = tracker.customFields || [];
+
+      if (cfs.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      section.classList.remove('hidden');
+      container.innerHTML = '';
+
+      cfs.forEach(cf => {
+        const currentVal = node.data.customFields?.[cf.id] || '';
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `
+          <label class="block font-semibold text-slate-700 mb-1">
+            ${escapeHtml(cf.name)} ${cf.required ? '<span class="text-rose-500">*</span>' : ''}
+          </label>
+          <select data-cf-id="${cf.id}" class="w-full border ${cf.required && !currentVal ? 'border-rose-400 bg-rose-50/40' : 'border-slate-300 bg-white'} rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500">
+            <option value="">-- 選択してください --</option>
+            ${cf.options.map(opt => `<option value="${escapeHtml(opt)}" ${currentVal === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+          </select>
+        `;
+        container.appendChild(wrap);
+      });
+
+      container.querySelectorAll('select[data-cf-id]').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const cfId = Number(e.target.dataset.cfId);
+          if (!node.data.customFields) node.data.customFields = {};
+          node.data.customFields[cfId] = e.target.value;
+          renderNodes();
+          renderInspector();
+        });
+      });
+    }
+
+    // ----------------------------------------------------------------------------
+    // 7. ノード・エッジの作成／削除／操作ロジック
+    // ----------------------------------------------------------------------------
+    function createTaskNode({ x, y, parentId = null, templateNode = null, subject = '' }) {
+      const id = generateId('task');
+      const newNode = {
+        id,
+        type: 'taskNode',
+        parentId,
+        x,
+        y,
+        data: {
+          subject,
+          trackerId: templateNode ? templateNode.data.trackerId : 1,
+          statusId: 1,
+          priorityId: templateNode ? templateNode.data.priorityId : 2,
+          assignedToId: templateNode ? templateNode.data.assignedToId : null,
+          versionId: templateNode ? templateNode.data.versionId : 5,
+          estimatedHours: 8,
+          startDate: state.baseStartDate,
+          dueDate: state.baseStartDate,
+          lockDates: false,
+          description: '',
+          customFields: templateNode ? { ...templateNode.data.customFields } : {},
+          createdIssueId: null
+        }
+      };
+      state.nodes.push(newNode);
+      return newNode;
+    }
+
+    function addDownstreamNode(sourceNode) {
+      const newNode = createTaskNode({
+        x: sourceNode.x + 330,
+        y: sourceNode.y,
+        parentId: sourceNode.parentId || null,
+        templateNode: sourceNode,
+        subject: ''
+      });
+      state.edges.push({
+        id: generateId('edge'),
+        source: sourceNode.id,
+        target: newNode.id,
+        delay: 0
+      });
+      state.selectedNodeId = newNode.id;
+      state.selectedEdgeId = null;
+      propagateSchedules(true);
+      fitGroupsToChildren();
+      renderAll();
+
+      // 題名入力欄に即座にフォーカス
+      setTimeout(() => {
+        const subjInput = document.getElementById('field-subject');
+        if (subjInput) subjInput.focus();
+      }, 20);
+    }
+
+    function addParallelNode(baseNode) {
+      const newNode = createTaskNode({
+        x: baseNode.x,
+        y: baseNode.y + 140,
+        parentId: baseNode.parentId || null,
+        templateNode: baseNode,
+        subject: ''
+      });
+      // 基準ノードに先行タスクがあれば同じ先行タスクから分岐接続する
+      const incoming = state.edges.filter(e => e.target === baseNode.id);
+      incoming.forEach(e => {
+        state.edges.push({
+          id: generateId('edge'),
+          source: e.source,
+          target: newNode.id,
+          delay: e.delay
+        });
+      });
+
+      state.selectedNodeId = newNode.id;
+      state.selectedEdgeId = null;
+      propagateSchedules(true);
+      fitGroupsToChildren();
+      renderAll();
+
+      setTimeout(() => {
+        const subjInput = document.getElementById('field-subject');
+        if (subjInput) subjInput.focus();
+      }, 20);
+    }
+
+    function connectNodes(sourceId, targetId) {
+      if (sourceId === targetId) return;
+      const srcNode = state.nodes.find(n => n.id === sourceId);
+      const tgtNode = state.nodes.find(n => n.id === targetId);
+      if (!srcNode || !tgtNode) return;
+
+      // 親グループノードにはエッジを張らせない（Redmine親子＋依存矛盾防止）
+      if (srcNode.type === 'groupNode' || tgtNode.type === 'groupNode') {
+        showToast('親チケット枠自体には先行・後続の矢印を接続できません', 'error');
+        return;
+      }
+
+      // 重複チェック
+      if (state.edges.some(e => e.source === sourceId && e.target === targetId)) {
+        showToast('すでに同じ先行・後続関係が接続されています', 'error');
+        return;
+      }
+
+      // 循環依存チェック
+      if (wouldCreateCycle(sourceId, targetId)) {
+        showToast('循環依存（ループ）になるため接続できません', 'error');
+        return;
+      }
+
+      state.edges.push({
+        id: generateId('edge'),
+        source: sourceId,
+        target: targetId,
+        delay: 0
+      });
+
+      propagateSchedules(true);
+      renderAll();
+      showToast('先行・後続関係 (precedes) を接続しました', 'success');
+    }
+
+    function deleteSelected() {
+      if (state.selectedEdgeId) {
+        state.edges = state.edges.filter(e => e.id !== state.selectedEdgeId);
+        state.selectedEdgeId = null;
+        propagateSchedules(true);
+        renderAll();
+        showToast('依存関係を削除しました', 'info');
+        return;
+      }
+
+      if (state.selectedNodeId) {
+        const target = state.nodes.find(n => n.id === state.selectedNodeId);
+        if (!target) return;
+
+        if (target.type === 'groupNode') {
+          // 親グループ削除時は子タスクの parentId を解除（子タスク自体は残す）
+          state.nodes.forEach(n => {
+            if (n.parentId === target.id) n.parentId = null;
+          });
+        }
+
+        state.nodes = state.nodes.filter(n => n.id !== state.selectedNodeId);
+        state.edges = state.edges.filter(e => e.source !== state.selectedNodeId && e.target !== state.selectedNodeId);
+        state.selectedNodeId = null;
+        propagateSchedules(true);
+        renderAll();
+        showToast('ノードを削除しました', 'info');
+      }
+    }
+
+    // ----------------------------------------------------------------------------
+    // 8. ポインター（マウス／タッチ）操作ハンドリング
+    // ----------------------------------------------------------------------------
+    const viewportEl = document.getElementById('flow-viewport');
+
+    function screenToWorld(clientX, clientY) {
+      const rect = viewportEl.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left - state.viewport.x) / state.viewport.zoom,
+        y: (clientY - rect.top - state.viewport.y) / state.viewport.zoom
+      };
+    }
+
+    viewportEl.addEventListener('pointerdown', (e) => {
+      // 1. クイック後続追加 '+' ボタン
+      const quickAddBtn = e.target.closest('[data-quick-add]');
+      if (quickAddBtn) {
+        e.stopPropagation();
+        const srcNode = state.nodes.find(n => n.id === quickAddBtn.dataset.quickAdd);
+        if (srcNode) addDownstreamNode(srcNode);
+        return;
+      }
+
+      // 2. 右ハンドル（Source）からのエッジ接続開始
+      const sourceHandle = e.target.closest('[data-handle-source]');
+      if (sourceHandle) {
+        e.stopPropagation();
+        const srcId = sourceHandle.dataset.handleSource;
+        const srcNode = state.nodes.find(n => n.id === srcId);
+        if (!srcNode) return;
+
+        state.interaction.mode = 'connect';
+        state.interaction.connectSourceId = srcId;
+        const wPos = screenToWorld(e.clientX, e.clientY);
+        state.interaction.mouseWorldX = wPos.x;
+        state.interaction.mouseWorldY = wPos.y;
+        document.getElementById('temp-edge-path').classList.remove('hidden');
+        updateTempEdge();
+        return;
+      }
+
+      // 3. 親グループ枠のリサイズハンドル
+      const resizeHandle = e.target.closest('[data-resize-group]');
+      if (resizeHandle) {
+        e.stopPropagation();
+        const grpId = resizeHandle.dataset.resizeGroup;
+        const grp = state.nodes.find(n => n.id === grpId);
+        if (!grp) return;
+
+        state.selectedNodeId = grpId;
+        state.selectedEdgeId = null;
+        state.interaction.mode = 'resizeGroup';
+        state.interaction.targetId = grpId;
+        state.interaction.startX = e.clientX;
+        state.interaction.startY = e.clientY;
+        state.interaction.origX = grp.width || 420;
+        state.interaction.origY = grp.height || 240;
+        renderAll();
+        return;
+      }
+
+      // 4. エッジまたはエッジバッジクリック
+      const edgeEl = e.target.closest('[data-edge-id]');
+      if (edgeEl) {
+        e.stopPropagation();
+        state.selectedEdgeId = edgeEl.dataset.edgeId;
+        state.selectedNodeId = null;
+        renderAll();
+        return;
+      }
+
+      // 5. ノード（タスク or 親グループ）ドラッグ移動
+      const nodeEl = e.target.closest('[data-node-id]');
+      if (nodeEl) {
+        e.stopPropagation();
+        const nodeId = nodeEl.dataset.nodeId;
+        const node = state.nodes.find(n => n.id === nodeId);
+        if (!node) return;
+
+        state.selectedNodeId = nodeId;
+        state.selectedEdgeId = null;
+        state.interaction.mode = 'dragNode';
+        state.interaction.targetId = nodeId;
+        state.interaction.startX = e.clientX;
+        state.interaction.startY = e.clientY;
+        state.interaction.origX = node.x;
+        state.interaction.origY = node.y;
+        // 親グループドラッグ時は配下の子ノード初期位置も記録
+        if (node.type === 'groupNode') {
+          node._childOrig = state.nodes
+            .filter(n => n.parentId === node.id)
+            .map(c => ({ id: c.id, x: c.x, y: c.y }));
+        }
+        renderAll();
+        return;
+      }
+
+      // 6. 背景パン移動
+      state.selectedNodeId = null;
+      state.selectedEdgeId = null;
+      state.interaction.mode = 'pan';
+      state.interaction.startX = e.clientX;
+      state.interaction.startY = e.clientY;
+      state.interaction.origX = state.viewport.x;
+      state.interaction.origY = state.viewport.y;
+      renderAll();
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      const mode = state.interaction.mode;
+      if (!mode) return;
+
+      if (mode === 'pan') {
+        state.viewport.x = state.interaction.origX + (e.clientX - state.interaction.startX);
+        state.viewport.y = state.interaction.origY + (e.clientY - state.interaction.startY);
+        applyViewportTransform();
+      } else if (mode === 'dragNode') {
+        const dx = (e.clientX - state.interaction.startX) / state.viewport.zoom;
+        const dy = (e.clientY - state.interaction.startY) / state.viewport.zoom;
+        const node = state.nodes.find(n => n.id === state.interaction.targetId);
+        if (!node) return;
+
+        // 10px スナップ
+        node.x = Math.round((state.interaction.origX + dx) / 10) * 10;
+        node.y = Math.round((state.interaction.origY + dy) / 10) * 10;
+
+        if (node.type === 'groupNode' && node._childOrig) {
+          node._childOrig.forEach(co => {
+            const child = state.nodes.find(n => n.id === co.id);
+            if (child) {
+              child.x = Math.round((co.x + dx) / 10) * 10;
+              child.y = Math.round((co.y + dy) / 10) * 10;
+            }
+          });
+        }
+        renderGroups();
+        renderEdges();
+        renderNodes();
+      } else if (mode === 'resizeGroup') {
+        const dx = (e.clientX - state.interaction.startX) / state.viewport.zoom;
+        const dy = (e.clientY - state.interaction.startY) / state.viewport.zoom;
+        const grp = state.nodes.find(n => n.id === state.interaction.targetId);
+        if (!grp) return;
+        grp.width = Math.max(300, Math.round((state.interaction.origX + dx) / 10) * 10);
+        grp.height = Math.max(180, Math.round((state.interaction.origY + dy) / 10) * 10);
+        renderGroups();
+      } else if (mode === 'connect') {
+        const wPos = screenToWorld(e.clientX, e.clientY);
+        state.interaction.mouseWorldX = wPos.x;
+        state.interaction.mouseWorldY = wPos.y;
+        updateTempEdge();
+      }
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      const mode = state.interaction.mode;
+      if (!mode) return;
+
+      if (mode === 'connect') {
+        document.getElementById('temp-edge-path').classList.add('hidden');
+        // ドロップ位置にあるノードまたは左ハンドルを判定
+        const targetHandle = e.target.closest('[data-handle-target]');
+        const targetNodeEl = e.target.closest('[data-node-id]');
+        const targetId = targetHandle?.dataset.handleTarget || targetNodeEl?.dataset.nodeId;
+        if (targetId && state.interaction.connectSourceId) {
+          connectNodes(state.interaction.connectSourceId, targetId);
+        }
+      } else if (mode === 'dragNode') {
+        const node = state.nodes.find(n => n.id === state.interaction.targetId);
+        // タスクノードをドロップした際、親グループ枠の内外判定を行う
+        if (node && node.type === 'taskNode') {
+          const cx = node.x + NODE_WIDTH / 2;
+          const cy = node.y + NODE_HEIGHT / 2;
+          const hitGroup = state.nodes.find(g =>
+            g.type === 'groupNode' &&
+            cx >= g.x && cx <= g.x + (g.width || 420) &&
+            cy >= g.y && cy <= g.y + (g.height || 240)
+          );
+          const prevParentId = node.parentId || null;
+          const nextParentId = hitGroup ? hitGroup.id : null;
+          if (prevParentId !== nextParentId) {
+            node.parentId = nextParentId;
+            propagateSchedules(true);
+            renderAll();
+            if (nextParentId) {
+              showToast(`「${hitGroup.data.subject}」の子チケットに設定しました`, 'info');
+            } else {
+              showToast('親チケット枠から切り離しました', 'info');
+            }
+          }
+        }
+      }
+
+      state.interaction.mode = null;
+      state.interaction.targetId = null;
+      state.interaction.connectSourceId = null;
+    });
+
+    // ダブルクリックでノード題名インライン編集
+    viewportEl.addEventListener('dblclick', (e) => {
+      const nodeEl = e.target.closest('[data-node-id]');
+      if (!nodeEl) return;
+      const nodeId = nodeEl.dataset.nodeId;
+      state.selectedNodeId = nodeId;
+      state.selectedEdgeId = null;
+      renderAll();
+      const subjInput = document.getElementById('field-subject');
+      if (subjInput) {
+        subjInput.focus();
+        subjInput.select();
+      }
+    });
+
+    // ホイールズーム
+    viewportEl.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      const newZoom = Math.min(1.8, Math.max(0.4, state.viewport.zoom * zoomFactor));
+      const rect = viewportEl.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      state.viewport.x = mx - (mx - state.viewport.x) * (newZoom / state.viewport.zoom);
+      state.viewport.y = my - (my - state.viewport.y) * (newZoom / state.viewport.zoom);
+      state.viewport.zoom = newZoom;
+      applyViewportTransform();
+    }, { passive: false });
+
+    function updateTempEdge() {
+      const src = state.nodes.find(n => n.id === state.interaction.connectSourceId);
+      if (!src) return;
+      const x1 = src.x + NODE_WIDTH;
+      const y1 = src.y + NODE_HEIGHT / 2;
+      const x2 = state.interaction.mouseWorldX;
+      const y2 = state.interaction.mouseWorldY;
+      const dx = Math.max(50, Math.abs(x2 - x1) * 0.5);
+      const pathD = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+      document.getElementById('temp-edge-path').setAttribute('d', pathD);
+    }
+
+    // ----------------------------------------------------------------------------
+    // 9. インスペクタ＆ツールバーイベントバインド
+    // ----------------------------------------------------------------------------
+    document.getElementById('base-start-date').addEventListener('change', (e) => {
+      state.baseStartDate = e.target.value;
+      propagateSchedules(false);
+      renderAll();
+    });
+
+    document.getElementById('btn-add-task').addEventListener('click', () => {
+      const wCenter = screenToWorld(viewportEl.clientWidth / 2, viewportEl.clientHeight / 2);
+      const selected = state.nodes.find(n => n.id === state.selectedNodeId && n.type === 'taskNode');
+      const newNode = createTaskNode({
+        x: Math.round(wCenter.x - NODE_WIDTH / 2),
+        y: Math.round(wCenter.y - NODE_HEIGHT / 2),
+        templateNode: selected || null,
+        subject: ''
+      });
+      state.selectedNodeId = newNode.id;
+      state.selectedEdgeId = null;
+      propagateSchedules(true);
+      renderAll();
+      document.getElementById('field-subject')?.focus();
+    });
+
+    document.getElementById('btn-add-group').addEventListener('click', () => {
+      const wCenter = screenToWorld(viewportEl.clientWidth / 2, viewportEl.clientHeight / 2);
+      const grp = {
+        id: generateId('group'),
+        type: 'groupNode',
+        x: Math.round(wCenter.x - 210),
+        y: Math.round(wCenter.y - 120),
+        width: 420,
+        height: 240,
+        data: {
+          subject: '新規親チケットグループ',
+          trackerId: 1,
+          statusId: 1,
+          priorityId: 2,
+          assignedToId: 10,
+          versionId: 5,
+          estimatedHours: 0,
+          startDate: state.baseStartDate,
+          dueDate: state.baseStartDate,
+          description: '',
+          customFields: { 101: 'バックエンドAPI' },
+          createdIssueId: null
+        }
+      };
+      state.nodes.push(grp);
+      state.selectedNodeId = grp.id;
+      state.selectedEdgeId = null;
+      renderAll();
+      showToast('親グループ枠を追加しました。タスクを枠内にドラッグして紐付けられます。', 'info');
+    });
+
+    document.getElementById('btn-auto-layout').addEventListener('click', autoLayoutLeftToRight);
+    document.getElementById('btn-recalc-dates').addEventListener('click', () => {
+      propagateSchedules(false);
+      renderAll();
+    });
+
+    document.getElementById('btn-zoom-in').addEventListener('click', () => {
+      state.viewport.zoom = Math.min(1.8, state.viewport.zoom + 0.1);
+      applyViewportTransform();
+    });
+    document.getElementById('btn-zoom-out').addEventListener('click', () => {
+      state.viewport.zoom = Math.max(0.4, state.viewport.zoom - 0.1);
+      applyViewportTransform();
+    });
+    document.getElementById('btn-fit-view').addEventListener('click', () => {
+      if (state.nodes.length === 0) return;
+      const minX = Math.min(...state.nodes.map(n => n.x));
+      const minY = Math.min(...state.nodes.map(n => n.y));
+      const maxX = Math.max(...state.nodes.map(n => n.x + (n.width || NODE_WIDTH)));
+      const maxY = Math.max(...state.nodes.map(n => n.y + (n.height || NODE_HEIGHT)));
+      const pad = 60;
+      const scaleX = (viewportEl.clientWidth - pad * 2) / Math.max(1, maxX - minX);
+      const scaleY = (viewportEl.clientHeight - pad * 2) / Math.max(1, maxY - minY);
+      state.viewport.zoom = Math.min(1.1, Math.max(0.45, Math.min(scaleX, scaleY)));
+      state.viewport.x = pad - minX * state.viewport.zoom;
+      state.viewport.y = pad - minY * state.viewport.zoom;
+      applyViewportTransform();
+    });
+
+    // インスペクタ入力のリアルタイム反映
+    document.getElementById('field-subject').addEventListener('input', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (!node) return;
+      node.data.subject = e.target.value;
+      renderGroups();
+      renderNodes();
+    });
+
+    document.getElementById('field-tracker').addEventListener('change', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (!node) return;
+      node.data.trackerId = Number(e.target.value);
+      renderAll();
+    });
+
+    document.getElementById('field-status').addEventListener('change', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (node) node.data.statusId = Number(e.target.value);
+    });
+
+    document.getElementById('field-priority').addEventListener('change', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (node) node.data.priorityId = Number(e.target.value);
+    });
+
+    document.getElementById('field-assignee').addEventListener('change', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (!node) return;
+      node.data.assignedToId = e.target.value ? Number(e.target.value) : null;
+      renderNodes();
+    });
+
+    document.getElementById('field-version').addEventListener('change', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (node) node.data.versionId = e.target.value ? Number(e.target.value) : null;
+    });
+
+    document.getElementById('field-estimated-hours').addEventListener('input', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (!node) return;
+      node.data.estimatedHours = Number(e.target.value) || 0;
+      propagateSchedules(true);
+      renderAll();
+    });
+
+    document.getElementById('field-lock-dates').addEventListener('change', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (!node) return;
+      node.data.lockDates = e.target.checked;
+      if (!node.data.lockDates) propagateSchedules(true);
+      renderAll();
+    });
+
+    document.getElementById('field-start-date').addEventListener('change', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (!node) return;
+      node.data.startDate = e.target.value;
+      node.data.lockDates = true;
+      propagateSchedules(true);
+      renderAll();
+    });
+
+    document.getElementById('field-due-date').addEventListener('change', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (!node) return;
+      node.data.dueDate = e.target.value;
+      node.data.lockDates = true;
+      propagateSchedules(true);
+      renderAll();
+    });
+
+    document.getElementById('field-description').addEventListener('input', (e) => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (node) node.data.description = e.target.value;
+    });
+
+    document.getElementById('edge-delay-input').addEventListener('input', (e) => {
+      const edge = state.edges.find(ed => ed.id === state.selectedEdgeId);
+      if (!edge) return;
+      edge.delay = Math.max(0, Number(e.target.value) || 0);
+      propagateSchedules(true);
+      renderAll();
+    });
+
+    document.getElementById('btn-detach-parent').addEventListener('click', () => {
+      const node = state.nodes.find(n => n.id === state.selectedNodeId);
+      if (!node) return;
+      node.parentId = null;
+      propagateSchedules(true);
+      renderAll();
+      showToast('親チケット枠から切り離しました', 'info');
+    });
+
+    document.getElementById('btn-delete-selected').addEventListener('click', deleteSelected);
+    document.getElementById('btn-reset-sample').addEventListener('click', () => {
+      loadSampleFlow();
+      showToast('サンプルフローを初期状態にリセットしました', 'info');
+    });
+
+    // キーボードショートカット（Tab: 右に後続追加 / Enter: 下に並列追加 / Delete: 削除）
+    window.addEventListener('keydown', (e) => {
+      const tag = document.activeElement?.tagName;
+      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !isTyping) {
+        e.preventDefault();
+        deleteSelected();
+        return;
+      }
+
+      if (e.key === 'Tab' && !e.shiftKey && state.selectedNodeId) {
+        const selected = state.nodes.find(n => n.id === state.selectedNodeId && n.type === 'taskNode');
+        if (selected) {
+          e.preventDefault();
+          addDownstreamNode(selected);
+        }
+        return;
+      }
+
+      if (e.key === 'Enter' && !isTyping && state.selectedNodeId) {
+        const selected = state.nodes.find(n => n.id === state.selectedNodeId && n.type === 'taskNode');
+        if (selected) {
+          e.preventDefault();
+          addParallelNode(selected);
+        }
+      }
+    });
+
+    // ----------------------------------------------------------------------------
+    // 10. Redmine 一括登録シミュレーション & JSONエクスポート
+    // ----------------------------------------------------------------------------
+    function buildBulkPayload() {
+      // 親グループを先に、その後トポロジカルソート順のタスクを並べる
+      const groups = state.nodes.filter(n => n.type === 'groupNode');
+      const sortedTaskIds = topologicalSortTasks();
+      const taskMap = new Map(state.nodes.filter(n => n.type === 'taskNode').map(n => [n.id, n]));
+      const orderedTasks = sortedTaskIds.map(id => taskMap.get(id)).filter(Boolean);
+
+      return {
+        project_id: REDMINE_MASTER.project.id,
+        issues: [...groups, ...orderedTasks].map(n => ({
+          temp_id: n.id,
+          parent_temp_id: n.parentId || null,
+          is_group: n.type === 'groupNode',
+          tracker_id: n.data.trackerId,
+          subject: n.data.subject,
+          status_id: n.data.statusId,
+          priority_id: n.data.priorityId,
+          assigned_to_id: n.data.assignedToId,
+          fixed_version_id: n.data.versionId,
+          estimated_hours: n.data.estimatedHours,
+          start_date: n.data.startDate,
+          due_date: n.data.dueDate,
+          custom_field_values: n.data.customFields || {},
+          description: n.data.description || ''
+        })),
+        relations: state.edges.map(e => ({
+          source_temp_id: e.source,
+          target_temp_id: e.target,
+          relation_type: 'precedes',
+          delay: e.delay || 0
+        }))
+      };
+    }
+
+    document.getElementById('btn-bulk-create').addEventListener('click', () => {
+      if (state.nodes.length === 0) {
+        showToast('登録するノードがありません', 'error');
+        return;
+      }
+
+      // 全ノードバリデーション
+      const invalidNodes = [];
+      state.nodes.forEach(n => {
+        const errs = validateNode(n);
+        if (errs.length > 0) invalidNodes.push({ node: n, errors: errs });
+      });
+
+      if (invalidNodes.length > 0) {
+        const firstInvalid = invalidNodes[0].node;
+        state.selectedNodeId = firstInvalid.id;
+        state.selectedEdgeId = null;
+        renderAll();
+        showToast(`${invalidNodes.length}件のノードに入力エラーがあります。赤枠のノードを確認してください。`, 'error');
+        return;
+      }
+
+      // Rails トランザクション一括登録のシミュレーション（#1041〜連番採番）
+      const payload = buildBulkPayload();
+      let nextIssueId = 1041;
+      const idMap = new Map();
+
+      payload.issues.forEach(item => {
+        const assignedId = nextIssueId++;
+        idMap.set(item.temp_id, assignedId);
+        const targetNode = state.nodes.find(n => n.id === item.temp_id);
+        if (targetNode) targetNode.data.createdIssueId = assignedId;
+      });
+
+      renderAll();
+
+      // 結果モーダル表示
+      const rowsHtml = payload.issues.map(item => {
+        const issueId = idMap.get(item.temp_id);
+        const parentIssueId = item.parent_temp_id ? idMap.get(item.parent_temp_id) : null;
+        const tracker = REDMINE_MASTER.trackers.find(t => t.id === item.tracker_id);
+        return `
+          <tr class="border-b border-slate-100">
+            <td class="py-2 px-2 font-mono font-bold text-emerald-700">#${issueId}</td>
+            <td class="py-2 px-2">
+              <span class="px-1.5 py-0.5 text-[10px] font-bold rounded border ${tracker?.color || ''}">${escapeHtml(tracker?.name || '')}</span>
+            </td>
+            <td class="py-2 px-2 font-medium text-slate-800">
+              ${parentIssueId ? `<span class="text-xs text-indigo-600 font-mono mr-1">[親#${parentIssueId}]</span>` : ''}
+              ${escapeHtml(item.subject)}
+            </td>
+            <td class="py-2 px-2 font-mono text-xs text-slate-500">${item.start_date} 〜 ${item.due_date}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const relHtml = payload.relations.map(r => {
+        return `<li class="font-mono text-xs text-slate-700">#${idMap.get(r.source_temp_id)} ──(precedes +${r.delay}d)──▶ #${idMap.get(r.target_temp_id)}</li>`;
+      }).join('');
+
+      openModal({
+        title: `Redmine チケット一括登録完了（${payload.issues.length}件）`,
+        copyText: JSON.stringify(payload, null, 2),
+        bodyHtml: `
+          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs">
+            トポロジカルソート順（上流 → 下流）で単一トランザクション登録を実行し、全チケットと先行・後続リレーションを作成しました。
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-500">
+                <tr>
+                  <th class="py-2 px-2">チケット</th>
+                  <th class="py-2 px-2">トラッカー</th>
+                  <th class="py-2 px-2">題名</th>
+                  <th class="py-2 px-2">期間</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">登録された依存関係 (IssueRelation)</h4>
+            <ul class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              ${relHtml || '<li class="text-xs text-slate-400">依存関係なし</li>'}
+            </ul>
+          </div>
+        `
+      });
+    });
+
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+      const payload = buildBulkPayload();
+      const jsonStr = JSON.stringify(payload, null, 2);
+      openModal({
+        title: 'API送信ペイロード / テンプレート JSON',
+        copyText: jsonStr,
+        bodyHtml: `
+          <p class="text-xs text-slate-600">Rails 一括登録 API へ送信される JSON ペイロード（およびテンプレート保存形式）です。</p>
+          <pre class="p-3 bg-slate-900 text-emerald-300 rounded-xl text-xs font-mono overflow-x-auto max-h-80">${escapeHtml(jsonStr)}</pre>
+        `
+      });
+    });
+
+    // ----------------------------------------------------------------------------
+    // 11. モーダル & トースト通知ヘルパー
+    // ----------------------------------------------------------------------------
+    let currentModalCopyText = '';
+
+    function openModal({ title, bodyHtml, copyText = '' }) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-body').innerHTML = bodyHtml;
+      currentModalCopyText = copyText;
+      const copyBtn = document.getElementById('modal-copy-btn');
+      if (copyText) {
+        copyBtn.classList.remove('hidden');
+      } else {
+        copyBtn.classList.add('hidden');
+      }
+      document.getElementById('modal-backdrop').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-backdrop').classList.add('hidden');
+    }
+
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal-ok-btn').addEventListener('click', closeModal);
+    document.getElementById('modal-copy-btn').addEventListener('click', () => {
+      const ta = document.createElement('textarea');
+      ta.value = currentModalCopyText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('JSONをクリップボードにコピーしました', 'success');
+    });
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colors = {
+        info: 'bg-slate-800 text-white border-slate-700',
+        success: 'bg-emerald-600 text-white border-emerald-500',
+        error: 'bg-rose-600 text-white border-rose-500'
+      };
+      toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl shadow-lg border text-xs font-medium transition-all transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 250);
+      }, 3200);
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // 初期起動
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSampleFlow();
+    });
+  </script>
+</body>
+</html>

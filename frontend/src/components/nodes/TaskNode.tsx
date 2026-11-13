@@ -79,7 +79,7 @@ export const TaskNode: React.FC<NodeProps<TaskFlowNode>> = memo(
         <Handle
           type="target"
           position={Position.Left}
-          className="!w-3.5 !h-3.5 !bg-white !border-2 !border-slate-400 group-hover:!border-sky-500 !-left-2"
+          className="w-3.5! h-3.5! bg-white! border-2! border-slate-400! group-hover:border-sky-500! -left-2!"
           title="先行タスクからの接続先 (Target)"
         />
 
@@ -165,7 +165,7 @@ export const TaskNode: React.FC<NodeProps<TaskFlowNode>> = memo(
         <Handle
           type="source"
           position={Position.Right}
-          className="!w-3.5 !h-3.5 !bg-sky-500 !border-2 !border-white !shadow-sm !-right-2"
+          className="w-3.5! h-3.5! bg-sky-500! border-2! border-white! shadow-sm! -right-2!"
           title="ドラッグして後続タスクへ接続 (Source)"
         />
 

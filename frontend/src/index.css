@@ -1,8 +1,8 @@
 @import '@xyflow/react/dist/style.css';
 @import 'tailwindcss/theme.css' layer(theme);
 
-.task-flow-root {
-  @import 'tailwindcss/utilities.css' layer(utilities);
+@theme {
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
 .task-flow-root {
@@ -33,6 +33,10 @@
 .task-flow-root button {
   cursor: pointer;
   background-color: transparent;
+}
+
+.task-flow-root {
+  @import 'tailwindcss/utilities.css';
 }
 
 .task-flow-root .canvas-grid {

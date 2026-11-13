@@ -1,4 +1,4 @@
-import dagre from 'dagre';
+import dagre from '@dagrejs/dagre';
 import type { TaskFlowEdge, TaskFlowNode } from '../types/flow';
 
 export const TASK_NODE_WIDTH = 256;

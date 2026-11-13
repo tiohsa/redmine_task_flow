@@ -38,8 +38,8 @@ export const GroupNode: React.FC<NodeProps<TaskFlowNode>> = memo(
           isVisible={selected && !isSubmitted}
           minWidth={280}
           minHeight={180}
-          lineClassName="!border-indigo-400"
-          handleClassName="!w-2.5 !h-2.5 !bg-indigo-600 !border-white !rounded"
+          lineClassName="border-indigo-400!"
+          handleClassName="w-2.5! h-2.5! bg-indigo-600! border-white! rounded!"
         />
 
         {/* Group Header */}

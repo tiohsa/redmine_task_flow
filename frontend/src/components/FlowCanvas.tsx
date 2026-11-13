@@ -316,7 +316,7 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({ onOpenJsonExport }) => {
           </button>
         </div>
 
-        <div className="hidden lg:flex items-center gap-3 bg-white/90 backdrop-blur border border-slate-200 shadow-sm rounded-xl px-3 py-1.5 text-[11px] text-slate-500">
+        <div className="hidden md:flex items-center gap-3 bg-white/90 backdrop-blur border border-slate-200 shadow-sm rounded-xl px-3 py-1.5 text-[11px] text-slate-500">
           <span>
             <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-700 font-mono">
               Tab
