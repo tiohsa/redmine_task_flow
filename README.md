@@ -1,32 +1,54 @@
 = Redmine Task Flow
 
-Redmine plugin that adds task date editing and issue dependency management to the Gantt chart.
+Redmine plugin that provides a visual DAG task flow editor and bulk issue/relation creator.
 
 == Requirements
 
 * Redmine 6.0, 6.1, or 7.0 and a Ruby version supported by that Redmine release.
-* The Redmine REST API must be enabled for issue and relation updates.
-* Users need the appropriate permissions to edit issues and manage relations.
+* Enable the +Task Flow+ (+task_flow+) module on target projects.
+* Users need +create_issues_via_flow+, +add_issues+, and +manage_issue_relations+ permissions.
 
-The template targets the same Redmine series as +redmine_canvas_gantt+:
-6.0, 6.1, and 7.0. Ruby, Rails, jQuery, and jQuery UI are supplied by Redmine;
-this plugin does not install or pin separate copies of those libraries.
-Use the versions supported by your Redmine installation.
+Ruby and Rails are supplied by Redmine; no plugin-specific gems or database migrations are required.
+Prebuilt frontend bundles (+assets/javascripts/task_flow.js+ and +assets/stylesheets/task_flow.css+) are included in the repository.
 
 * {Redmine releases}[https://www.redmine.org/projects/redmine/wiki/Download]
 * {Redmine runtime requirements}[https://www.redmine.org/projects/redmine/wiki/RedmineInstall]
 
 == Installation
 
-Place this directory at +plugins/redmine_task_flow+ in the Redmine installation and restart Redmine. No plugin-specific gems or database migrations are currently required.
+Place this directory at +plugins/redmine_task_flow+ in the Redmine installation and restart Redmine.
+
+== Development & Frontend Build
+
+The frontend is built with React, TypeScript, Vite, Tailwind CSS, Zustand, +@xyflow/react+, and +dagre+ under +frontend/+.
+To rebuild the plugin assets after editing +frontend/src/+:
+
+  cd frontend
+  npm install
+  npm run build
+
+When developing with the parent Docker Compose environment (+../../docker-compose.yml+, Redmine 7.0.2 at +http://localhost:3000+), restart the +redmine+ service after updating Ruby files, routes, views, or built assets:
+
+  docker compose -f ../../docker-compose.yml up -d
+  docker compose -f ../../docker-compose.yml restart redmine
 
 == Tests
 
-Configure a separate +test+ database in Redmine's +config/database.yml+ and
-prepare it according to Redmine's testing instructions. From the Redmine root, run:
+=== Frontend (Vitest)
+
+  cd frontend
+  npm test
+
+=== Backend (Minitest)
+
+Configure a separate +test+ database in Redmine's +config/database.yml+ and prepare it according to Redmine's testing instructions.
+
+From the Redmine root:
 
   RAILS_ENV=test bundle exec rails test plugins/redmine_task_flow/test
 
-The plugin includes existing Gantt chart JavaScript; its behavior should also be checked in a browser against the Redmine version in use.
+Or inside the Docker Compose +redmine+ container (from +plugins/redmine_task_flow+):
 
-The internal +my_gantt_plugin+ module and view paths retain their original names; the registered plugin identifier is +redmine_task_flow+.
+  docker compose -f ../../docker-compose.yml exec -e RAILS_ENV=test redmine bundle exec rails test plugins/redmine_task_flow/test
+
+Browser verification against a running Redmine instance (e.g. +http://localhost:3000+) should also be performed for UI flows, persistence, and permission checks.

@@ -1,0 +1,20 @@
+ja:
+  label_task_flow: "タスクフロー"
+  project_module_task_flow: "タスクフロー"
+  permission_create_issues_via_flow: "タスクフローからの一括起票"
+  task_flow:
+    errors:
+      empty_issues: "1件以上のチケットを指定してください。"
+      too_many_issues: "1リクエストで登録できるチケットは最大%{max}件です。"
+      too_many_relations: "1リクエストで登録できる関連は最大%{max}件です。"
+      blank_temp_id: "temp_id が空です。"
+      duplicate_temp_id: "temp_id が重複しています: %{temp_id}"
+      missing_parent_temp_id: "親チケットの temp_id が見つかりません: %{parent_temp_id}"
+      nested_group_not_allowed: "親グループ枠の入れ子（ネスト）はできません。"
+      self_parent_not_allowed: "自身を親チケットに指定することはできません。"
+      missing_relation_endpoint: "関連の端点 temp_id が見つかりません: %{temp_id}"
+      self_loop_not_allowed: "自己ループの関連は作成できません。"
+      group_relation_not_allowed: "親グループ枠を端点とする依存関係は作成できません。"
+      duplicate_relation: "重複した依存関係があります: %{source} -> %{target}"
+      invalid_relation_type: "未対応の relation_type です: %{relation_type}"
+      cycle_detected: "依存関係に循環（閉路）が含まれています。"

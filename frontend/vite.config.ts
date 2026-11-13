@@ -5,7 +5,7 @@ import { resolve } from 'path';
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
   define: {
-    'process.env.NODE_ENV': JSON.stringify(mode === 'development' ? 'development' : 'production'),
+    'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
   },
   build: {
     outDir: resolve(__dirname, '../assets'),

@@ -259,6 +259,7 @@ export interface FlowStoreState {
 
   toasts: ToastMessage[];
   focusSubjectSeq: number;
+  isInspectorCollapsed: boolean;
 
   // Initialization & toast helpers
   initialize: (
@@ -269,11 +270,13 @@ export interface FlowStoreState {
   addToast: (type: ToastMessage['type'], message: string) => void;
   removeToast: (id: string) => void;
 
-  // Selection
+  // Selection & Inspector UI
   selectNode: (nodeId: string | null) => void;
   selectEdge: (edgeId: string | null) => void;
   clearSelection: () => void;
   triggerFocusSubject: () => void;
+  toggleInspectorCollapsed: () => void;
+  setInspectorCollapsed: (collapsed: boolean) => void;
 
   // React Flow controlled handlers
   onNodesChange: (changes: NodeChange<TaskFlowNode>[]) => void;
@@ -350,6 +353,7 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
 
   toasts: [],
   focusSubjectSeq: 0,
+  isInspectorCollapsed: false,
 
   initialize: (bootstrap, bulkCreateUrl) => {
     const baseDate = todayYmd();
@@ -470,7 +474,18 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
   },
 
   triggerFocusSubject: () => {
-    set((state) => ({ focusSubjectSeq: state.focusSubjectSeq + 1 }));
+    set((state) => ({
+      focusSubjectSeq: state.focusSubjectSeq + 1,
+      isInspectorCollapsed: false,
+    }));
+  },
+
+  toggleInspectorCollapsed: () => {
+    set((state) => ({ isInspectorCollapsed: !state.isInspectorCollapsed }));
+  },
+
+  setInspectorCollapsed: (collapsed) => {
+    set({ isInspectorCollapsed: collapsed });
   },
 
   pushSnapshot: (snapshot) => {
@@ -639,6 +654,7 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
       selectedNodeId: newId,
       selectedEdgeId: null,
       focusSubjectSeq: prev.focusSubjectSeq + 1,
+      isInspectorCollapsed: false,
     }));
     persistDraftIfReady(get());
     return newId;
@@ -693,6 +709,7 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
       selectedNodeId: newId,
       selectedEdgeId: null,
       focusSubjectSeq: prev.focusSubjectSeq + 1,
+      isInspectorCollapsed: false,
     }));
     persistDraftIfReady(get());
     return newId;

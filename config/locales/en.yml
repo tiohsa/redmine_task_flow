@@ -1,3 +1,20 @@
-# English strings go here for Rails i18n
 en:
-  # my_label: "My label"
+  label_task_flow: "Task Flow"
+  project_module_task_flow: "Task Flow"
+  permission_create_issues_via_flow: "Create issues via Task Flow"
+  task_flow:
+    errors:
+      empty_issues: "At least one issue is required."
+      too_many_issues: "Cannot create more than %{max} issues in a single request."
+      too_many_relations: "Cannot create more than %{max} relations in a single request."
+      blank_temp_id: "temp_id must not be blank."
+      duplicate_temp_id: "Duplicate temp_id: %{temp_id}"
+      missing_parent_temp_id: "Parent temp_id not found: %{parent_temp_id}"
+      nested_group_not_allowed: "Group nodes cannot be nested."
+      self_parent_not_allowed: "An issue cannot be its own parent."
+      missing_relation_endpoint: "Relation endpoint temp_id not found: %{temp_id}"
+      self_loop_not_allowed: "Self-referencing relation is not allowed."
+      group_relation_not_allowed: "Group nodes cannot have precedes/follows relations."
+      duplicate_relation: "Duplicate relation between %{source} and %{target}."
+      invalid_relation_type: "Unsupported relation_type: %{relation_type}"
+      cycle_detected: "Circular dependency detected in relations."

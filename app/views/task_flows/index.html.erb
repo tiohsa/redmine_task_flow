@@ -1,0 +1,15 @@
+<% html_title(l(:label_task_flow)) %>
+
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'task_flow', plugin: 'redmine_task_flow' %>
+<% end %>
+
+<div id="redmine-task-flow-root"
+     class="task-flow-root"
+     data-project-id="<%= @project.id %>"
+     data-project-identifier="<%= @project.identifier %>"
+     data-bootstrap-url="<%= bootstrap_project_task_flow_path(@project, format: :json) %>"
+     data-bulk-create-url="<%= bulk_create_project_task_flow_path(@project, format: :json) %>">
+</div>
+
+<%= javascript_include_tag 'task_flow', plugin: 'redmine_task_flow' %>
