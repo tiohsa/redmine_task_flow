@@ -21,23 +21,19 @@ import {
 } from '../domain/autoLayout';
 import type { FlowSnapshot, TaskFlowNode } from '../types/flow';
 import { validateConnection } from '../domain/graphValidation';
+import { isEditableElement } from '../domain/dom';
 
 interface FlowCanvasProps {
   onOpenJsonExport: (jsonText: string) => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
-function isEditableElement(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName.toLowerCase();
-  return (
-    tag === 'input' ||
-    tag === 'textarea' ||
-    tag === 'select' ||
-    target.isContentEditable
-  );
-}
-
-export const FlowCanvas: React.FC<FlowCanvasProps> = ({ onOpenJsonExport }) => {
+export const FlowCanvas: React.FC<FlowCanvasProps> = ({
+  onOpenJsonExport,
+  isFullscreen = false,
+  onToggleFullscreen,
+}) => {
   const { zoomIn, zoomOut, zoomTo, fitView, getZoom } = useReactFlow();
   const [zoomPercent, setZoomPercent] = useState<number>(100);
   const preDragSnapshotRef = useRef<FlowSnapshot | null>(null);
@@ -237,7 +233,11 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({ onOpenJsonExport }) => {
 
   return (
     <main className="flex-1 relative overflow-hidden flex flex-col canvas-grid">
-      <ActionBars onOpenJsonExport={onOpenJsonExport} />
+      <ActionBars
+        onOpenJsonExport={onOpenJsonExport}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={onToggleFullscreen}
+      />
 
       <ReactFlow
         nodes={nodes}

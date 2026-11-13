@@ -5,6 +5,7 @@ import { useFlowStore } from './store/useFlowStore';
 import { FlowCanvas } from './components/FlowCanvas';
 import { InspectorPanel } from './components/InspectorPanel';
 import { ResultModal, ToastContainer } from './components/ResultModal';
+import { isEditableElement } from './domain/dom';
 
 interface AppProps {
   bootstrapUrl: string;
@@ -15,8 +16,25 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [exportJsonText, setExportJsonText] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const initialize = useFlowStore((s) => s.initialize);
+  const resultModalOpen = useFlowStore((s) => s.resultModalOpen);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (isEditableElement(e.target)) return;
+      if (exportJsonText !== null || resultModalOpen) return;
+      e.preventDefault();
+      setIsFullscreen(false);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isFullscreen, exportJsonText, resultModalOpen]);
 
   useEffect(() => {
     let active = true;
@@ -63,19 +81,33 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
     );
   }
 
-  return (
-    <div className="flex h-[calc(100vh-140px)] min-h-[640px] w-full bg-slate-100 border border-slate-200 rounded-xl overflow-hidden relative shadow-sm">
-      <ReactFlowProvider>
-        <FlowCanvas onOpenJsonExport={(txt) => setExportJsonText(txt)} />
-      </ReactFlowProvider>
+  const containerClassName = isFullscreen
+    ? 'task-flow-fullscreen fixed inset-0 flex bg-slate-100 overflow-hidden'
+    : 'flex h-[calc(100vh-140px)] min-h-[640px] w-full bg-slate-100 border border-slate-200 rounded-xl overflow-hidden relative shadow-sm';
 
-      <InspectorPanel />
+  return (
+    <>
+      <div
+        data-testid="task-flow-editor-container"
+        data-fullscreen={isFullscreen ? 'true' : 'false'}
+        className={containerClassName}
+      >
+        <ReactFlowProvider>
+          <FlowCanvas
+            onOpenJsonExport={(txt) => setExportJsonText(txt)}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          />
+        </ReactFlowProvider>
+
+        <InspectorPanel />
+      </div>
 
       <ResultModal
         jsonText={exportJsonText}
         onClose={() => setExportJsonText(null)}
       />
       <ToastContainer />
-    </div>
+    </>
   );
 };

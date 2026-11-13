@@ -26,7 +26,7 @@ export const ToastContainer: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="task-flow-toast fixed bottom-4 right-4 flex flex-col gap-2 max-w-sm">
       {toasts.map((t) => (
         <div
           key={t.id}
@@ -76,7 +76,7 @@ export const ResultModal: React.FC<JsonExportModalProps> = ({
     };
 
     return (
-      <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+      <div className="task-flow-modal fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <h3 className="text-base font-bold text-slate-800 m-0">
@@ -126,7 +126,7 @@ export const ResultModal: React.FC<JsonExportModalProps> = ({
   if (!resultModalOpen || !resultModalMode) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+    <div className="task-flow-modal fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <h3 className="text-base font-bold text-slate-800 m-0">

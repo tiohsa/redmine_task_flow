@@ -1,6 +1,6 @@
 # フローキャンバス・ノード・親子グループ仕様
 
-対象実装: `frontend/src/components/FlowCanvas.tsx`, `frontend/src/components/ActionBars.tsx`, `frontend/src/components/nodes/TaskNode.tsx`, `frontend/src/components/nodes/GroupNode.tsx`, `frontend/src/store/useFlowStore.ts`, `frontend/src/domain/uuid.ts`, `frontend/src/index.css`
+対象実装: `frontend/src/App.tsx`, `frontend/src/components/FlowCanvas.tsx`, `frontend/src/components/ActionBars.tsx`, `frontend/src/components/nodes/TaskNode.tsx`, `frontend/src/components/nodes/GroupNode.tsx`, `frontend/src/store/useFlowStore.ts`, `frontend/src/domain/dom.ts`, `frontend/src/domain/uuid.ts`, `frontend/src/index.css`
 
 ## 1. フローキャンバス設定 (`FlowCanvas.tsx`)
 
@@ -40,6 +40,7 @@
 | `サンプル初期化` | `resetToSample()` | 確認なしでサンプルフローへ再初期化 |
 | `新規フローとしてリセット` | `resetFlow()` | `isSubmitted === true` のときのみ表示 |
 | `Redmineに一括登録（N件）` | `submitBulkCreate()` | `isSubmitting \|\| isSubmitted \|\| nodes.length === 0` 時は無効化。送信中は `登録中...`、完了後は `登録完了` を表示 |
+| `全画面` / `全画面解除` | `onToggleFullscreen()` | `aria-pressed` で状態を表現。`isSubmitted` 時も常時操作可。Browser Fullscreen API は使用せず、エディタコンテナを `fixed inset-0` でビューポート全体に最大化する（`localStorage`・URL へは永続化しない）。`.task-flow-root` 内の CSS 変数で重なり順を管理し、Redmine の固定ヘッダ（9999）より全画面エディタ（10000）、モーダル（10010）、トースト（10020）の順に前面へ表示する |
 
 ## 3. キーボードショートカット (`FlowCanvas.tsx`)
 
@@ -52,6 +53,7 @@
 | `Tab` | `!isSubmitted` かつ `taskNode` 選択中 | `addTaskNode({ sourceNodeId: selected.id })`（右隣に後続タスクを追加しエッジ接続） |
 | `Enter` | `!isSubmitted` かつ `taskNode` 選択中 | `addTaskNode({ siblingOfNodeId: selected.id })`（下に並列タスクを追加し全先行エッジを複製） |
 | `Delete` / `Backspace` | `!isSubmitted` かつノードまたはエッジ選択中 | `deleteSelected()` |
+| `Escape` | `isFullscreen === true` かつ入力要素外かつモーダル（`ResultModal` / JSON出力モーダル）非表示時 | 全画面表示を解除（`App.tsx` で処理） |
 
 ## 4. Undo / Redo 履歴仕様 (`useFlowStore.ts`, `FlowCanvas.tsx`)
 

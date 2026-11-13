@@ -6,6 +6,13 @@
 }
 
 .task-flow-root {
+  /* Redmine's responsive header uses z-index: 9999. Keep overlays above the editor. */
+  --task-flow-z-fullscreen: 10000;
+  --task-flow-z-modal: 10010;
+  --task-flow-z-toast: 10020;
+  /* High-contrast hand cursors so grab/grabbing remain visible on light backgrounds across OS themes. */
+  --task-flow-cursor-grab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%23ffffff' stroke='%230f172a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2'/%3E%3Cpath d='M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2'/%3E%3Cpath d='M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8'/%3E%3Cpath d='M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15'/%3E%3C/svg%3E") 12 12, grab;
+  --task-flow-cursor-grabbing: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%23ffffff' stroke='%230f172a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11.5V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1.4'/%3E%3Cpath d='M14 10V8a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2'/%3E%3Cpath d='M10 9.9V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v5'/%3E%3Cpath d='M6 14a2 2 0 0 0-2 2a2 2 0 0 0 .58 1.42l2.14 2.14A6 6 0 0 0 11 21.3h3a6 6 0 0 0 6-6v-4a2 2 0 0 0-2-2a2 2 0 0 0-2 2'/%3E%3C/svg%3E") 12 12, grabbing;
   font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #1e293b;
   box-sizing: border-box;
@@ -39,6 +46,18 @@
   @import 'tailwindcss/utilities.css';
 }
 
+.task-flow-root .task-flow-fullscreen {
+  z-index: var(--task-flow-z-fullscreen);
+}
+
+.task-flow-root .task-flow-modal {
+  z-index: var(--task-flow-z-modal);
+}
+
+.task-flow-root .task-flow-toast {
+  z-index: var(--task-flow-z-toast);
+}
+
 .task-flow-root .canvas-grid {
   background-color: #f8fafc;
 }
@@ -47,6 +66,17 @@
   padding: 0;
   border: none;
   background: transparent;
+}
+
+.task-flow-root .react-flow__pane.draggable,
+.task-flow-root .react-flow__node.draggable,
+.task-flow-root .react-flow__nodesselection-rect {
+  cursor: var(--task-flow-cursor-grab);
+}
+
+.task-flow-root .react-flow__pane.dragging,
+.task-flow-root .react-flow__node.draggable.dragging {
+  cursor: var(--task-flow-cursor-grabbing);
 }
 
 .task-flow-root .react-flow__handle {
