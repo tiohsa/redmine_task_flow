@@ -8,11 +8,11 @@ export default defineConfig(({ mode }) => ({
     'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
   },
   build: {
-    outDir: resolve(__dirname, '../assets'),
+    outDir: resolve(import.meta.dirname, '../assets'),
     emptyOutDir: false,
     cssCodeSplit: false,
     lib: {
-      entry: resolve(__dirname, 'src/main.tsx'),
+      entry: resolve(import.meta.dirname, 'src/main.tsx'),
       name: 'RedmineTaskFlow',
       formats: ['iife'],
       fileName: () => 'javascripts/task_flow.js',

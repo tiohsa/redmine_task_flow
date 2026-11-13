@@ -39,22 +39,26 @@ const BOOTSTRAP: BootstrapData = {
 describe('persistence (UT-FE-17 ~ UT-FE-18)', () => {
   it('UT-FE-17: catches QuotaExceededError safely when saving draft to localStorage', () => {
     const spy = vi
-      .spyOn(window.localStorage, 'setItem')
+      .spyOn(Storage.prototype, 'setItem')
       .mockImplementation(() => {
         throw new DOMException('QuotaExceededError', 'QuotaExceededError');
       });
 
-    expect(getDraftStorageKey(12, 10)).toBe('task_flow_draft_v1_12_10');
-    const result = saveDraftToStorage(12, 10, {
-      schema_version: 1,
-      baseDate: '2026-11-16',
-      nodes: [],
-      edges: [],
-    });
+    try {
+      expect(getDraftStorageKey(12, 10)).toBe('task_flow_draft_v1_12_10');
+      const result = saveDraftToStorage(12, 10, {
+        schema_version: 1,
+        baseDate: '2026-11-16',
+        nodes: [],
+        edges: [],
+      });
 
-    expect(spy).toHaveBeenCalled();
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('QuotaExceededError');
+      expect(spy).toHaveBeenCalled();
+      expect(result.ok).toBe(false);
+      expect(result.error).toContain('QuotaExceededError');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('UT-FE-18: falls back invalid cross-project IDs on JSON import and returns warnings', () => {
