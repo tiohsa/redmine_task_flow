@@ -1,0 +1,67 @@
+.vite/
+.antigravitycli/
+.codegraph/
+docs/*
+!docs/README.md
+!docs/specifications/
+!docs/timer-session-contract.md
+!docs/demo-current.gif
+!docs/architecture/
+docs/architecture/*
+!docs/architecture/timer-session-architecture.md
+graphify-out/
+spec-docs/
+DESIGN.md
+conductor/
+.playwright-mcp/
+output/
+#spec-docs/
+tasks/
+#.codex
+.specify
+specs
+# Ruby
+.bundle/
+log/
+tmp/
+vendor/bundle/
+*.gem
+
+# Node / TypeScript
+node_modules/
+spa/node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.env*
+
+# Test / coverage
+coverage/
+spa/coverage/
+
+# Playwright temporary transform/cache files
+spa/.playwright-temp/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+.venv/
+.serena/
+.rtk/
+.tokensave
+spa/bench/*
+!spa/bench/API_QUERY_PAYLOAD_FOLLOWUP_20261012.md
+!spa/bench/interaction-results-20261012.json
+!spa/bench/interaction-report-20261012.md
+.agents/
+.codex/
+
+# Local pnpm cache
+.pnpm-store/
