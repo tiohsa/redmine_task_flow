@@ -124,7 +124,7 @@ describe('Fullscreen Toggle (App + ActionBars)', () => {
     expect(editor.className).toContain('relative');
     expect(editor.classList.contains('task-flow-fullscreen')).toBe(false);
     expect(btn.getAttribute('aria-pressed')).toBe('false');
-    expect(btn.textContent).toContain('全画面');
+    expect(btn.getAttribute('aria-label')).toBe('全画面表示');
 
     const keysBefore = Object.keys(window.localStorage);
 
@@ -138,7 +138,7 @@ describe('Fullscreen Toggle (App + ActionBars)', () => {
     expect(editor.className).toContain('inset-0');
     expect(editor.classList.contains('task-flow-fullscreen')).toBe(true);
     expect(btn.getAttribute('aria-pressed')).toBe('true');
-    expect(btn.textContent).toContain('全画面解除');
+    expect(btn.getAttribute('aria-label')).toBe('全画面解除');
 
     // Should not persist fullscreen state to localStorage
     expect(Object.keys(window.localStorage)).toEqual(keysBefore);
@@ -229,9 +229,9 @@ describe('Fullscreen Toggle (App + ActionBars)', () => {
     });
 
     // Case 2: JSON export modal is open
-    const jsonExportBtn = Array.from(
-      container.querySelectorAll('button'),
-    ).find((b) => b.textContent?.includes('JSON出力'));
+    const jsonExportBtn = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="JSON出力"]',
+    );
     expect(jsonExportBtn).toBeTruthy();
 
     await act(async () => {

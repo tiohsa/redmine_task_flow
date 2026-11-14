@@ -19,28 +19,30 @@
 
 ## 2. ツールバー操作 (`ActionBars.tsx`)
 
+左右両方のフローティングバーは、`docs/code_artifact.html` に準拠したコンパクトな SVG アイコンボタン（`w-10 h-10 rounded-xl`）と区切り線で構成する。各アイコンボタンおよび基準日入力には `aria-label` を付与し、ホバー・フォーカス時に上端でクリップされない**下向きツールチップ（`top-full mt-2`, `role="tooltip"`）**を表示する（詳細は [toolbar-iconification/SPEC.md](toolbar-iconification/SPEC.md) を参照）。
+
 ### 左上フローティングバー
 
-| ボタン | 呼び出しアクション | 無効化条件 |
+| ボタン (`aria-label` / ツールチップ) | 呼び出しアクション | 無効化条件 |
 |---|---|---|
 | `タスク追加` | `addTaskNode()` | `isSubmitted` |
 | `親グループ枠` | `addGroupNode()` | `isSubmitted` |
 | `左→右 自動整列` | `applyAutoLayout()` | `isSubmitted` |
 | `日程自動伝播` | `recalculateDates()` | `isSubmitted` |
-| `Undo` | `undo()` | `isSubmitted \|\| past.length === 0` |
-| `Redo` | `redo()` | `isSubmitted \|\| future.length === 0` |
+| `Undo`（ツールチップ: `元に戻す (Undo)`） | `undo()` | `isSubmitted \|\| past.length === 0` |
+| `Redo`（ツールチップ: `やり直す (Redo)`） | `redo()` | `isSubmitted \|\| future.length === 0` |
 
 ### 右上フローティングバー
 
-| 要素 / ボタン | 呼び出しアクション | 備考 |
+| 要素 / ボタン (`aria-label`) | 呼び出しアクション | 備考 |
 |---|---|---|
-| `フロー基準日` (`<input type="date">`) | `setBaseDate(e.target.value)` | `isSubmitted` 時は無効化 |
+| `フロー基準日` (`<input type="date">` + カレンダーアイコン) | `setBaseDate(e.target.value)` | `isSubmitted` 時は無効化。下向きツールチップ「フロー基準日」 |
 | `JSON出力` | `onOpenJsonExport(exportJson())` | 常時操作可 |
 | `JSON読込` | `importJson(reader.result)` | `.json,application/json` ファイル選択 |
 | `サンプル初期化` | `resetToSample()` | 確認なしでサンプルフローへ再初期化 |
-| `新規フローとしてリセット` | `resetFlow()` | `isSubmitted === true` のときのみ表示 |
-| `Redmineに一括登録（N件）` | `submitBulkCreate()` | `isSubmitting \|\| isSubmitted \|\| nodes.length === 0` 時は無効化。送信中は `登録中...`、完了後は `登録完了` を表示 |
-| `全画面` / `全画面解除` | `onToggleFullscreen()` | `aria-pressed` で状態を表現。`isSubmitted` 時も常時操作可。Browser Fullscreen API は使用せず、エディタコンテナを `fixed inset-0` でビューポート全体に最大化する（`localStorage`・URL へは永続化しない）。`.task-flow-root` 内の CSS 変数で重なり順を管理し、Redmine の固定ヘッダ（9999）より全画面エディタ（10000）、モーダル（10010）、トースト（10020）の順に前面へ表示する |
+| `新規フローとしてリセット` | `resetFlow()` | `isSubmitted === true` のときのみ表示（テキストボタン） |
+| `Redmineに一括登録 (N件)` | `submitBulkCreate()` | 右上に `nodes.length` 件数バッジ（`data-testid="bulk-create-count-badge"`）を表示。`isSubmitting \|\| isSubmitted \|\| nodes.length === 0` 時は無効化。送信中はスピナー＋`登録中...`、完了後はチェックアイコン＋`登録完了` を `aria-label`・ツールチップに反映 |
+| `全画面表示` / `全画面解除` | `onToggleFullscreen()` | `aria-pressed` で状態を表現（ツールチップ: `全画面表示` / `全画面解除 (Esc)`）。`isSubmitted` 時も常時操作可。Browser Fullscreen API は使用せず、エディタコンテナを `fixed inset-0` でビューポート全体に最大化する（`localStorage`・URL へは永続化しない）。`.task-flow-root` 内の CSS 変数で重なり順を管理し、Redmine の固定ヘッダ（9999）より全画面エディタ（10000）、モーダル（10010）、トースト（10020）の順に前面へ表示する |
 
 ## 3. キーボードショートカット (`FlowCanvas.tsx`)
 

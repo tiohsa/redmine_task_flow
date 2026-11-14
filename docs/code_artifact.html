@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ツールバー機能のアイコン化</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      background-color: #f8fafc;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    /* ツールチップアニメーション */
+    .tooltip-container:hover .tooltip {
+      opacity: 1;
+      transform: translate(-50%, 0);
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 text-slate-700">
+
+  <div class="max-w-4xl w-full space-y-10">
+    
+    <!-- ヘッダー説明 -->
+    <div class="text-center space-y-2">
+      <h1 class="text-2xl font-bold text-slate-800">ツールバー機能のアイコン化</h1>
+      <p class="text-sm text-slate-500">
+        元のテキストボタンを直感的なSVGアイコンへ変換しました。各アイコンにホバーすると機能名が表示され、クリックでSVGコードをコピーできます。
+      </p>
+    </div>
+
+    <!-- 1. アイコン化されたコンパクト・ツールバーのプレビュー -->
+    <div class="space-y-3">
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 px-1">
+        アイコン化後のUIイメージ（ホバーでツールチップ表示）
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- 上段グループ：編集・レイアウト系 -->
+        <div class="inline-flex items-center gap-1.5 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200/80">
+          
+          <!-- タスク追加 -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('task-add', 'タスク追加')" class="w-10 h-10 rounded-xl bg-[#0077b6] hover:bg-[#006296] text-white flex items-center justify-center transition shadow-sm active:scale-95" aria-label="タスク追加">
+              <svg id="svg-task-add" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M12 8v8" />
+                <path d="M8 12h8" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              タスク追加
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <!-- 親グループ枠 -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('parent-group', '親グループ枠')" class="w-10 h-10 rounded-xl bg-indigo-50/80 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 flex items-center justify-center transition active:scale-95" aria-label="親グループ枠">
+              <svg id="svg-parent-group" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" stroke-dasharray="3 3" />
+                <path d="M12 9v6" />
+                <path d="M9 12h6" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              親グループ枠
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <div class="w-px h-6 bg-slate-200 mx-0.5"></div>
+
+          <!-- 左→右 自動整列 -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('auto-align', '左→右 自動整列')" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80 flex items-center justify-center transition active:scale-95" aria-label="左→右 自動整列">
+              <svg id="svg-auto-align" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="5" height="6" rx="1" />
+                <rect x="3" y="14" width="5" height="6" rx="1" />
+                <rect x="16" y="9" width="5" height="6" rx="1" />
+                <path d="M8 7h4v5h4" />
+                <path d="M8 17h4v-5" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              左→右 自動整列
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <!-- 日程自動伝播 -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('date-propagate', '日程自動伝播')" class="w-10 h-10 rounded-xl bg-white hover:bg-amber-50 text-amber-500 border border-slate-200/80 flex items-center justify-center transition active:scale-95" aria-label="日程自動伝播">
+              <svg id="svg-date-propagate" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="15" height="15" rx="2" />
+                <path d="M13 2v4" />
+                <path d="M8 2v4" />
+                <path d="M3 10h15" />
+                <path d="M14 15h7" />
+                <path d="M18 12l3 3-3 3" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              日程自動伝播
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <div class="w-px h-6 bg-slate-200 mx-0.5"></div>
+
+          <!-- Undo -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('undo', '元に戻す (Undo)')" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80 flex items-center justify-center transition active:scale-95" aria-label="Undo">
+              <svg id="svg-undo" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 14L4 9l5-5" />
+                <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              元に戻す (Undo)
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <!-- Redo -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('redo', 'やり直す (Redo)')" class="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 border border-slate-200/50 flex items-center justify-center transition active:scale-95" aria-label="Redo">
+              <svg id="svg-redo" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 14l5-5-5-5" />
+                <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              やり直す (Redo)
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 下段グループ：基準日・入出力・連携系 -->
+        <div class="inline-flex items-center gap-1.5 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200/80">
+          
+          <!-- フロー基準日 -->
+          <div class="relative tooltip-container flex items-center gap-1.5 px-2.5 h-10 rounded-xl bg-slate-50 border border-slate-200/80">
+            <svg id="svg-base-date" class="w-4 h-4 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4" />
+              <path d="M8 2v4" />
+              <path d="M3 10h18" />
+              <circle cx="12" cy="15" r="2" fill="currentColor" />
+            </svg>
+            <input type="date" value="2026-11-14" class="bg-transparent text-sm font-medium text-slate-700 focus:outline-none w-28" aria-label="フロー基準日">
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              フロー基準日
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <div class="w-px h-6 bg-slate-200 mx-0.5"></div>
+
+          <!-- JSON出力 -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('json-export', 'JSON出力')" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80 flex items-center justify-center transition active:scale-95" aria-label="JSON出力">
+              <svg id="svg-json-export" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <path d="M12 18v-6" />
+                <path d="M9 15l3-3 3 3" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              JSON出力
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <!-- JSON読込 -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('json-import', 'JSON読込')" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80 flex items-center justify-center transition active:scale-95" aria-label="JSON読込">
+              <svg id="svg-json-import" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <path d="M12 12v6" />
+                <path d="M9 15l3 3 3-3" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              JSON読込
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <!-- サンプル初期化 -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('sample-reset', 'サンプル初期化')" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80 flex items-center justify-center transition active:scale-95" aria-label="サンプル初期化">
+              <svg id="svg-sample-reset" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M12 8v4l2 2" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              サンプル初期化
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <!-- Redmineに一括登録 (5件) -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('redmine-sync', 'Redmineに一括登録')" class="relative w-10 h-10 rounded-xl bg-[#00965e] hover:bg-[#007f4f] text-white flex items-center justify-center transition shadow-sm active:scale-95" aria-label="Redmineに一括登録 (5件)">
+              <svg id="svg-redmine-sync" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+                <path d="m9 13 2 2 4-4" />
+              </svg>
+              <!-- 件数バッジ -->
+              <span class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm">
+                5
+              </span>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              Redmineに一括登録 (5件)
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+          <div class="w-px h-6 bg-slate-200 mx-0.5"></div>
+
+          <!-- 全画面 -->
+          <div class="relative tooltip-container">
+            <button onclick="copySvg('fullscreen', '全画面')" class="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80 flex items-center justify-center transition active:scale-95" aria-label="全画面">
+              <svg id="svg-fullscreen" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+              </svg>
+            </button>
+            <div class="tooltip opacity-0 pointer-events-none transition-all duration-150 transform -translate-y-1 absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-md z-10">
+              全画面
+              <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 各アイコンの対応表・デザイン意図一覧（クリックでSVGコピー可能） -->
+    <div class="space-y-3">
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 px-1">
+        アイコン一覧＆SVGコードコピー（カードをクリックしてSVGを取得）
+      </div>
+
+      <div id="icon-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- JavaScriptで一覧カードを自動生成 -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- コピー通知トースト -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-200 z-50">
+    <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    <span id="toast-msg">SVGコードをコピーしました</span>
+  </div>
+
+  <script>
+    // アイコン定義データ
+    const iconItems = [
+      {
+        id: 'task-add',
+        name: 'タスク追加',
+        desc: 'カード型フレーム＋プラス記号で新規タスクノードの追加を表現',
+        colorClass: 'bg-[#0077b6] text-white'
+      },
+      {
+        id: 'parent-group',
+        name: '親グループ枠',
+        desc: '元のデザインを踏襲した破線枠＋プラス記号でグループ領域の作成を表現',
+        colorClass: 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+      },
+      {
+        id: 'auto-align',
+        name: '左→右 自動整列',
+        desc: '左側の複数ノードが右側のノードへ接続・整列されるフロー図アイコン',
+        colorClass: 'bg-white text-slate-700 border border-slate-200'
+      },
+      {
+        id: 'date-propagate',
+        name: '日程自動伝播',
+        desc: 'カレンダーから右方向へ矢印が伸び、後続タスクへ日程が波及する様子を表現',
+        colorClass: 'bg-white text-amber-500 border border-slate-200'
+      },
+      {
+        id: 'undo',
+        name: 'Undo（元に戻す）',
+        desc: '左向きのUターン矢印で操作の取り消しを直感的に表示',
+        colorClass: 'bg-white text-slate-700 border border-slate-200'
+      },
+      {
+        id: 'redo',
+        name: 'Redo（やり直す）',
+        desc: '右向きのUターン矢印で取り消した操作の再実行を表示',
+        colorClass: 'bg-slate-50 text-slate-400 border border-slate-200'
+      },
+      {
+        id: 'base-date',
+        name: 'フロー基準日',
+        desc: '基準となる特定日（ハイライト点）を示すカレンダーアイコン',
+        colorClass: 'bg-white text-slate-700 border border-slate-200'
+      },
+      {
+        id: 'json-export',
+        name: 'JSON出力',
+        desc: 'ドキュメントから外側（上方向）へデータを書き出すエクスポートアイコン',
+        colorClass: 'bg-white text-slate-700 border border-slate-200'
+      },
+      {
+        id: 'json-import',
+        name: 'JSON読込',
+        desc: 'ドキュメントの内側（下方向）へデータを取り込むインポートアイコン',
+        colorClass: 'bg-white text-slate-700 border border-slate-200'
+      },
+      {
+        id: 'sample-reset',
+        name: 'サンプル初期化',
+        desc: '反時計回りのリセット矢印で初期状態（テンプレート）への復元を表現',
+        colorClass: 'bg-white text-slate-700 border border-slate-200'
+      },
+      {
+        id: 'redmine-sync',
+        name: 'Redmineに一括登録 (5件)',
+        desc: '外部システム（クラウド）への登録完了チェック＋右上の件数バッジで省スペース化',
+        colorClass: 'bg-[#00965e] text-white'
+      },
+      {
+        id: 'fullscreen',
+        name: '全画面',
+        desc: '四隅のブラケットでキャンバスの最大化・全画面表示を表現',
+        colorClass: 'bg-white text-slate-700 border border-slate-200'
+      }
+    ];
+
+    // 一覧カードのレンダリング
+    const grid = document.getElementById('icon-grid');
+    iconItems.forEach(item => {
+      const svgEl = document.getElementById(`svg-${item.id}`);
+      const svgMarkup = svgEl ? svgEl.outerHTML.replace(/id="[^"]*"/, '') : '';
+
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.onclick = () => copySvg(item.id, item.name);
+      card.className = 'text-left bg-white hover:bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow transition flex items-start gap-3.5 group';
+      
+      card.innerHTML = `
+        <div class="w-11 h-11 rounded-xl ${item.colorClass} flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+          ${svgMarkup}
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-semibold text-sm text-slate-800 truncate">${item.name}</span>
+            <span class="text-[11px] font-medium text-slate-400 group-hover:text-sky-600 transition-colors shrink-0">SVGコピー</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1 leading-relaxed">${item.desc}</p>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    // クリップボードへSVGコードをコピーする処理
+    function copySvg(id, label) {
+      const svgEl = document.getElementById(`svg-${id}`);
+      if (!svgEl) return;
+
+      // id属性とTailwindのクラス整理をしたクリーンなSVG文字列を生成
+      const clone = svgEl.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.setAttribute('width', '20');
+      clone.setAttribute('height', '20');
+      clone.removeAttribute('class');
+      const code = clone.outerHTML;
+
+      // iFrame環境でも確実に動作するexecCommand('copy')を使用
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast(`「${label}」のSVGコードをコピーしました`);
+      } catch (err) {
+        showToast('コピーに失敗しました');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    let toastTimer;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toast-msg');
+      msgEl.textContent = message;
+      toast.classList.remove('opacity-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('opacity-0');
+      }, 2200);
+    }
+  </script>
+</body>
+</html>

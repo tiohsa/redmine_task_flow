@@ -80,7 +80,7 @@
 
 ## 3. フロントエンド単体テスト仕様（Vitest: `frontend/tests/`）
 
-現在 7 ファイル（計 31 テスト）が存在する：
+現在 9 ファイル（計 38 テスト）が存在する：
 
 | ファイル | 対象モジュール | テスト数 | 主な検証範囲 |
 | :--- | :--- | :--- | :--- |
@@ -90,11 +90,13 @@
 | `persistence.test.ts` | `domain/persistence.ts` | 2 | `QuotaExceededError` 捕捉、JSON インポート時の無効 ID フォールバックと警告収集 |
 | `client.test.ts` | `api/client.ts` | 1 | `X-CSRF-Token`・`X-Requested-With` 付与、HTML リダイレクト応答時の `SessionExpiredError` 検知 |
 | `inspectorPanel.test.tsx` | `components/InspectorPanel.tsx` | 6 | 折りたたみ/展開、ノード追加・ダブルクリック時の自動展開とフォーカス、送信済み/エラー時操作、クリック伝播抑止 |
-| `fullscreenToggle.test.tsx` | `App.tsx`, `components/ActionBars.tsx` | 6 | 全画面 ON/OFF と `aria-pressed`、`Esc` 解除、入力要素・モーダル表示中の `Esc` 抑止、状態保持、`isSubmitted` 時操作可 |
+| `fullscreenToggle.test.tsx` | `App.tsx`, `components/ActionBars.tsx` | 6 | `aria-label` / `aria-pressed` による全画面 ON/OFF、`Esc` 解除、入力要素・モーダル表示中の `Esc` 抑止、状態保持、`isSubmitted` 時操作可 |
+| `actionBars.test.tsx` | `components/ActionBars.tsx` | 5 | 全アイコンボタンの `aria-label` と下向きツールチップ（`top-full mt-2`）、件数バッジ、無効化境界条件、`isSubmitting` / `isSubmitted` / リセット表示、各クリックハンドラ |
+| `cursorStyles.test.ts` | `index.css` | 2 | `.task-flow-root` スコープ内のカスタム grab/grabbing カーソル定義 |
 
 ### 3.1 単体テストの未カバー領域
 
-`FlowCanvas.tsx`、`ActionBars.tsx`、`TaskNode.tsx`、`GroupNode.tsx`、`DependencyEdge.tsx`、`ResultModal.tsx` の実 DOM 描画、React Flow 上のドラッグ＆ドロップ操作、Redmine CSS との非干渉、および実サーバーとの通信は Vitest の対象外であり、次の実ブラウザ検証で担保する。
+`FlowCanvas.tsx`、`TaskNode.tsx`、`GroupNode.tsx`、`DependencyEdge.tsx`、`ResultModal.tsx` の実 DOM 描画、ホバー時ツールチップの視覚的クリップ有無、React Flow 上のドラッグ＆ドロップ操作、Redmine CSS との非干渉、および実サーバーとの通信は Vitest の対象外であり、次の実ブラウザ検証で担保する。
 
 ---
 
@@ -102,8 +104,9 @@
 
 JS / CSS / ERB / バックエンド変更時は、Docker 上の Redmine（`http://localhost:3000`）で以下を検証する。各シナリオは空の `localStorage` から開始する。
 
-1. **初期表示・画面統合確認**:
+1. **初期表示・画面統合・アイコンツールバー確認**:
    * 対象プロジェクトで `task_flow` モジュール有効化・3 権限付与時に「タスクフロー」タブが表示され、2 ペイン UI が Redmine ヘッダ／スタイルと干渉せず描画されること。
+   * 左右ツールバーがアイコンボタン＋区切り線＋件数バッジで描画され、各アイコンへのホバー・フォーカス時に下向きツールチップ（`top-full mt-2`）がキャンバス上端で切れずに表示されること。
 2. **キーボード操作によるフロー構築と分岐・合流**:
    * 「タスク追加」後、`Tab` で後続追加＋自動接続＋属性継承、`Enter` で並列ノード追加＋全先行タスクからの分岐接続、`Delete` で削除、`Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` で Undo/Redo できること。
 3. **不正接続ブロック**:
@@ -119,6 +122,6 @@ JS / CSS / ERB / バックエンド変更時は、Docker 上の Redmine（`http:
 7. **権限・セキュリティ確認**:
    * `:create_issues_via_flow`, `:add_issues`, `:manage_issue_relations` のいずれかが欠如したユーザーではメニューが非表示となり、直アクセスで `403` が返ること。HTML ソースに API キーが出力されないこと。
 8. **全画面表示トグル**:
-   * ツールバーの「全画面」ボタンで Redmine ヘッダ／ナビゲーション／フッタを覆うビューポート全体表示（`fixed inset-0`、z-index 10000）へ切り替わり、`ResultModal`（10010）やトースト通知（10020）が前面に表示されること。ノード・エッジ・選択状態・Undo/Redo 履歴が保持され、入力欄外での `Esc` キーおよび「全画面解除」ボタンで元の埋め込み表示へ戻ること。
+   * ツールバーの全画面アイコンボタン（`aria-label="全画面表示"`, `aria-pressed="false"`）で Redmine ヘッダ／ナビゲーション／フッタを覆うビューポート全体表示（`fixed inset-0`、z-index 10000）へ切り替わり、`ResultModal`（10010）やトースト通知（10020）が前面に表示されること。ノード・エッジ・選択状態・Undo/Redo 履歴が保持され、入力欄外での `Esc` キーおよび全画面解除アイコンボタン（`aria-label="全画面解除"`, `aria-pressed="true"`）で元の埋め込み表示へ戻ること。
    * 780×493 と 1280×800 で上端の「タスク追加」を実クリックし、`elementFromPoint` でも前面表示を確認する。JSON 出力・一括登録成功／エラーモーダル・トーストの前面表示と閉じる操作も確認する。
    * 認証情報がない場合の限定検証として、[browser-check.js](fullscreen-layering/browser-check.js) を Playwright MCP の `browser_run_code_unsafe` の `filename` に指定して実行できる。事前に Redmine を起動し、プラグインルートから `python3 -m http.server 8787 --bind 127.0.0.1 --directory assets` でビルド済みアセットを配信する。この検証は実際のログイン画面の DOM/CSS にアプリをマウントし、Bootstrap と一括登録 API の応答のみを置き換える。認証済み画面・実 DB 保存の検証を代替しない。実行結果は [verification.md](fullscreen-layering/verification.md) を参照。
