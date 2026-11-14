@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useFlowStore } from '../store/useFlowStore';
+import { TASK_FLOW_JSON_SCHEMA_TEXT } from '../domain/flowJsonSchema';
 
 interface JsonExportModalProps {
   jsonText: string | null;
@@ -42,63 +43,122 @@ export const ToastContainer: React.FC = () => {
   );
 };
 
-export const ResultModal: React.FC<JsonExportModalProps> = ({
+interface JsonExportDialogProps {
+  jsonText: string;
+  onClose: () => void;
+}
+
+const JsonExportDialog: React.FC<JsonExportDialogProps> = ({
   jsonText,
   onClose,
 }) => {
-  const resultModalOpen = useFlowStore((s) => s.resultModalOpen);
-  const resultModalMode = useFlowStore((s) => s.resultModalMode);
-  const closeResultModal = useFlowStore((s) => s.closeResultModal);
-  const nodes = useFlowStore((s) => s.nodes);
-  const createdIssuesMap = useFlowStore((s) => s.createdIssuesMap);
-  const validationErrors = useFlowStore((s) => s.validationErrors);
-  const submitErrorMessages = useFlowStore((s) => s.submitErrorMessages);
   const addToast = useFlowStore((s) => s.addToast);
+  const [showSchema, setShowSchema] = useState(false);
 
-  if (jsonText !== null) {
-    const handleCopy = async () => {
-      try {
-        await navigator.clipboard.writeText(jsonText);
-        addToast('success', 'JSON をクリップボードにコピーしました');
-      } catch {
-        addToast('warning', 'クリップボードへのコピーに失敗しました');
-      }
-    };
+  const copyToClipboard = async (text: string, successMessage: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      addToast('success', successMessage);
+    } catch {
+      addToast('warning', 'クリップボードへのコピーに失敗しました');
+    }
+  };
 
-    const handleDownload = () => {
-      const blob = new Blob([jsonText], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'task_flow.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    };
+  const handleCopyJson = () =>
+    copyToClipboard(jsonText, 'JSON をクリップボードにコピーしました');
 
-    return (
-      <div className="task-flow-modal fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-            <h3 className="text-base font-bold text-slate-800 m-0">
-              フロー JSON エクスポート
-            </h3>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 rounded-lg hover:bg-slate-200 text-slate-500"
+  const handleCopySchema = () =>
+    copyToClipboard(
+      TASK_FLOW_JSON_SCHEMA_TEXT,
+      'スキーマ定義をクリップボードにコピーしました',
+    );
+
+  const handleDownload = () => {
+    const blob = new Blob([jsonText], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'task_flow.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="task-flow-modal fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <h3 className="text-base font-bold text-slate-800 m-0">
+            {showSchema
+              ? 'フロー JSON エクスポート（スキーマ定義）'
+              : 'フロー JSON エクスポート'}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="閉じる"
+            className="p-1 rounded-lg hover:bg-slate-200 text-slate-500"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-5 overflow-y-auto text-xs">
+          {showSchema ? (
+            <div className="bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
+              <div className="px-3 py-2 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+                <span className="text-[11px] font-semibold text-slate-300">
+                  JSON Schema (Draft 2020-12)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopySchema}
+                  aria-label="スキーマ定義をコピー"
+                  title="スキーマ定義をコピー"
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                </button>
+              </div>
+              <pre
+                data-testid="json-schema-preview"
+                className="p-3 text-slate-100 overflow-x-auto font-mono leading-relaxed m-0"
+              >
+                {TASK_FLOW_JSON_SCHEMA_TEXT}
+              </pre>
+            </div>
+          ) : (
+            <pre
+              data-testid="json-export-preview"
+              className="p-3 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto font-mono leading-relaxed m-0"
             >
-              ✕
-            </button>
-          </div>
-          <div className="p-5 overflow-y-auto text-xs">
-            <pre className="p-3 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto font-mono leading-relaxed">
               {jsonText}
             </pre>
-          </div>
-          <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-end gap-2">
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowSchema((prev) => !prev)}
+            aria-pressed={showSchema}
+            className="px-3.5 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg transition"
+          >
+            {showSchema ? '出力JSONに戻る' : 'スキーマ定義を表示'}
+          </button>
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleCopy}
+              onClick={handleCopyJson}
               className="px-3.5 py-1.5 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg transition"
             >
               JSONをコピー
@@ -120,7 +180,24 @@ export const ResultModal: React.FC<JsonExportModalProps> = ({
           </div>
         </div>
       </div>
-    );
+    </div>
+  );
+};
+
+export const ResultModal: React.FC<JsonExportModalProps> = ({
+  jsonText,
+  onClose,
+}) => {
+  const resultModalOpen = useFlowStore((s) => s.resultModalOpen);
+  const resultModalMode = useFlowStore((s) => s.resultModalMode);
+  const closeResultModal = useFlowStore((s) => s.closeResultModal);
+  const nodes = useFlowStore((s) => s.nodes);
+  const createdIssuesMap = useFlowStore((s) => s.createdIssuesMap);
+  const validationErrors = useFlowStore((s) => s.validationErrors);
+  const submitErrorMessages = useFlowStore((s) => s.submitErrorMessages);
+
+  if (jsonText !== null) {
+    return <JsonExportDialog jsonText={jsonText} onClose={onClose} />;
   }
 
   if (!resultModalOpen || !resultModalMode) return null;
