@@ -1,15 +1,15 @@
 import type {
   BootstrapData,
+  SavedFlowEntry,
+  SerializedFlowData,
   TaskFlowEdge,
   TaskFlowNode,
 } from '../types/flow';
 
-export interface SerializedFlowData {
-  schema_version: 1;
-  baseDate: string;
-  nodes: TaskFlowNode[];
-  edges: TaskFlowEdge[];
-}
+export type { SavedFlowEntry, SerializedFlowData };
+
+export const MAX_SAVED_FLOWS = 5;
+export const MAX_SAVED_FLOW_NAME_LENGTH = 50;
 
 export interface ImportResult {
   ok: boolean;
@@ -18,11 +18,27 @@ export interface ImportResult {
   error?: string;
 }
 
+function extractStorageErrorMessage(err: unknown): string {
+  return err &&
+    typeof err === 'object' &&
+    'message' in err &&
+    typeof (err as { message: unknown }).message === 'string'
+    ? (err as { message: string }).message
+    : 'localStorage save failed';
+}
+
 export function getDraftStorageKey(
   projectId: number | string,
   userId: number | string,
 ): string {
   return `task_flow_draft_v1_${projectId}_${userId}`;
+}
+
+export function getSavedFlowsStorageKey(
+  projectId: number | string,
+  userId: number | string,
+): string {
+  return `task_flow_saved_v1_${projectId}_${userId}`;
 }
 
 export function saveDraftToStorage(
@@ -35,13 +51,9 @@ export function saveDraftToStorage(
     window.localStorage.setItem(key, JSON.stringify(payload));
     return { ok: true };
   } catch (err) {
-    const message =
-      err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
-        ? (err as { message: string }).message
-        : 'localStorage save failed';
     return {
       ok: false,
-      error: message,
+      error: extractStorageErrorMessage(err),
     };
   }
 }
@@ -70,12 +82,15 @@ export function clearDraftFromStorage(
   }
 }
 
-export function serializeFlowJson(
+/**
+ * Builds a normalized SerializedFlowData payload with selection and createdIssueId cleared.
+ */
+export function buildNormalizedFlowPayload(
   nodes: TaskFlowNode[],
   edges: TaskFlowEdge[],
   baseDate: string,
-): string {
-  const payload: SerializedFlowData = {
+): SerializedFlowData {
+  return {
     schema_version: 1,
     baseDate,
     nodes: nodes.map((n) => ({
@@ -91,6 +106,95 @@ export function serializeFlowJson(
       selected: false,
     })),
   };
+}
+
+/**
+ * Validates and trims a saved flow name against required and length constraints.
+ */
+export function validateSavedFlowName(
+  rawName: string,
+): { ok: true; name: string } | { ok: false; error: string } {
+  const trimmed = rawName.trim();
+  if (trimmed.length === 0) {
+    return { ok: false, error: '保存名を入力してください' };
+  }
+  if (trimmed.length > MAX_SAVED_FLOW_NAME_LENGTH) {
+    return {
+      ok: false,
+      error: `保存名は${MAX_SAVED_FLOW_NAME_LENGTH}文字以内で入力してください`,
+    };
+  }
+  return { ok: true, name: trimmed };
+}
+
+function isValidSavedFlowEntry(entry: unknown): entry is SavedFlowEntry {
+  if (!entry || typeof entry !== 'object') return false;
+  const record = entry as Record<string, unknown>;
+  if (
+    typeof record.id !== 'string' ||
+    record.id.length === 0 ||
+    typeof record.name !== 'string' ||
+    record.name.trim().length === 0 ||
+    typeof record.updatedAt !== 'string'
+  ) {
+    return false;
+  }
+  const data = record.data;
+  if (!data || typeof data !== 'object') return false;
+  const dataRecord = data as Record<string, unknown>;
+  return (
+    dataRecord.schema_version === 1 &&
+    Array.isArray(dataRecord.nodes) &&
+    Array.isArray(dataRecord.edges)
+  );
+}
+
+/**
+ * Loads saved flow entries for the given project and user from localStorage.
+ */
+export function loadSavedFlowsFromStorage(
+  projectId: number | string,
+  userId: number | string,
+): SavedFlowEntry[] {
+  try {
+    const key = getSavedFlowsStorageKey(projectId, userId);
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValidSavedFlowEntry).slice(0, MAX_SAVED_FLOWS);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Persists up to MAX_SAVED_FLOWS saved flow entries for the given project and user.
+ */
+export function saveSavedFlowsToStorage(
+  projectId: number | string,
+  userId: number | string,
+  entries: SavedFlowEntry[],
+): { ok: boolean; error?: string } {
+  try {
+    const key = getSavedFlowsStorageKey(projectId, userId);
+    const normalized = entries.slice(0, MAX_SAVED_FLOWS);
+    window.localStorage.setItem(key, JSON.stringify(normalized));
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: extractStorageErrorMessage(err),
+    };
+  }
+}
+
+export function serializeFlowJson(
+  nodes: TaskFlowNode[],
+  edges: TaskFlowEdge[],
+  baseDate: string,
+): string {
+  const payload = buildNormalizedFlowPayload(nodes, edges, baseDate);
   return JSON.stringify(payload, null, 2);
 }
 

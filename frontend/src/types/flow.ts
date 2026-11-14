@@ -150,3 +150,17 @@ export interface ToastMessage {
   type: 'info' | 'success' | 'warning' | 'error';
   message: string;
 }
+
+export interface SerializedFlowData {
+  schema_version: 1;
+  baseDate: string;
+  nodes: TaskFlowNode[];
+  edges: TaskFlowEdge[];
+}
+
+export interface SavedFlowEntry {
+  id: string;
+  name: string;
+  updatedAt: string;
+  data: SerializedFlowData;
+}

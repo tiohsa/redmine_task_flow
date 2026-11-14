@@ -80,18 +80,19 @@
 
 ## 3. フロントエンド単体テスト仕様（Vitest: `frontend/tests/`）
 
-現在 9 ファイル（計 38 テスト）が存在する：
+現在 10 ファイル（計 45 テスト）が存在する：
 
 | ファイル | 対象モジュール | テスト数 | 主な検証範囲 |
 | :--- | :--- | :--- | :--- |
 | `graphValidation.test.ts` | `domain/graphValidation.ts` | 6 | 1対多・多対1接続許可、自己ループ・重複・2ノード/多段循環・`groupNode` 接続拒否 |
 | `datePropagation.test.ts` | `domain/datePropagation.ts` | 6 | 直列 `delay`、合流最大値、`dueDate: null` ガード、工数 `0`/`null` フォールバック、`lockDates` 保護、Group ロールアップ／空リセット |
 | `storeAndLayout.test.ts` | `store/useFlowStore.ts`, `domain/autoLayout.ts` | 4 | `dagre` 左→右順序と非重複、Undo/Redo とドラッグ中間座標無視、Group 削除時デタッチと配列前方配置、`Tab` 継承・`Enter` 分岐・手動日付ロック |
-| `persistence.test.ts` | `domain/persistence.ts` | 2 | `QuotaExceededError` 捕捉、JSON インポート時の無効 ID フォールバックと警告収集 |
+| `persistence.test.ts` | `domain/persistence.ts` | 4 | `QuotaExceededError` 捕捉、JSON インポート時の無効 ID フォールバックと警告収集、保存名バリデーション（空白・50文字上限）、名前付き保存データの正規化・破損 JSON 耐性・5件上限 |
+| `savedFlows.test.tsx` | `components/SavedFlowsModal.tsx`, `store/useFlowStore.ts`, `App.tsx` | 5 | 5件までの新規保存・再初期化後保持・6件目上限エラー・削除後再保存、読込（Undo 連携・自動下書き同期・`isSubmitted` 時操作・無効 ID フォールバック）、上書き保存、`QuotaExceededError` 耐性、全画面モーダル重なり順と `Esc` 抑止 |
 | `client.test.ts` | `api/client.ts` | 1 | `X-CSRF-Token`・`X-Requested-With` 付与、HTML リダイレクト応答時の `SessionExpiredError` 検知 |
 | `inspectorPanel.test.tsx` | `components/InspectorPanel.tsx` | 6 | 折りたたみ/展開、ノード追加・ダブルクリック時の自動展開とフォーカス、送信済み/エラー時操作、クリック伝播抑止 |
 | `fullscreenToggle.test.tsx` | `App.tsx`, `components/ActionBars.tsx` | 6 | `aria-label` / `aria-pressed` による全画面 ON/OFF、`Esc` 解除、入力要素・モーダル表示中の `Esc` 抑止、状態保持、`isSubmitted` 時操作可 |
-| `actionBars.test.tsx` | `components/ActionBars.tsx` | 5 | 全アイコンボタンの `aria-label` と下向きツールチップ（`top-full mt-2`）、件数バッジ、無効化境界条件、`isSubmitting` / `isSubmitted` / リセット表示、各クリックハンドラ |
+| `actionBars.test.tsx` | `components/ActionBars.tsx` | 5 | 全アイコンボタン（`保存・読込` 含む）の `aria-label` と下向きツールチップ（`top-full mt-2`）、件数バッジ、無効化境界条件、`isSubmitting` / `isSubmitted` / リセット表示、各クリックハンドラ |
 | `cursorStyles.test.ts` | `index.css` | 2 | `.task-flow-root` スコープ内のカスタム grab/grabbing カーソル定義 |
 
 ### 3.1 単体テストの未カバー領域
@@ -125,3 +126,7 @@ JS / CSS / ERB / バックエンド変更時は、Docker 上の Redmine（`http:
    * ツールバーの全画面アイコンボタン（`aria-label="全画面表示"`, `aria-pressed="false"`）で Redmine ヘッダ／ナビゲーション／フッタを覆うビューポート全体表示（`fixed inset-0`、z-index 10000）へ切り替わり、`ResultModal`（10010）やトースト通知（10020）が前面に表示されること。ノード・エッジ・選択状態・Undo/Redo 履歴が保持され、入力欄外での `Esc` キーおよび全画面解除アイコンボタン（`aria-label="全画面解除"`, `aria-pressed="true"`）で元の埋め込み表示へ戻ること。
    * 780×493 と 1280×800 で上端の「タスク追加」を実クリックし、`elementFromPoint` でも前面表示を確認する。JSON 出力・一括登録成功／エラーモーダル・トーストの前面表示と閉じる操作も確認する。
    * 認証情報がない場合の限定検証として、[browser-check.js](fullscreen-layering/browser-check.js) を Playwright MCP の `browser_run_code_unsafe` の `filename` に指定して実行できる。事前に Redmine を起動し、プラグインルートから `python3 -m http.server 8787 --bind 127.0.0.1 --directory assets` でビルド済みアセットを配信する。この検証は実際のログイン画面の DOM/CSS にアプリをマウントし、Bootstrap と一括登録 API の応答のみを置き換える。認証済み画面・実 DB 保存の検証を代替しない。実行結果は [verification.md](fullscreen-layering/verification.md) を参照。
+9. **名前付きフロー保存（最大 5 件）**:
+   * 「保存・読込」ボタンから `SavedFlowsModal` を開き、名前を付けて 5 件まで新規保存できること。6 件目の新規保存が上限エラーでブロックされること。
+   * ページリロード後も 5 件の保存データが保持されること。
+   * 保存一覧から「上書き保存」「削除」が動作し、削除後に再度新規保存できること。「読込」でキャンバスが切り替わり、自動下書きにも反映され、`Undo` で読込前へ戻せること。全画面表示中にモーダルを開き、`Esc` でモーダルのみ閉じて全画面が維持されること。

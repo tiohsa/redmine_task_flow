@@ -25,12 +25,14 @@ import { isEditableElement } from '../domain/dom';
 
 interface FlowCanvasProps {
   onOpenJsonExport: (jsonText: string) => void;
+  onOpenSavedFlows?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
 }
 
 export const FlowCanvas: React.FC<FlowCanvasProps> = ({
   onOpenJsonExport,
+  onOpenSavedFlows,
   isFullscreen = false,
   onToggleFullscreen,
 }) => {
@@ -235,6 +237,7 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
     <main className="flex-1 relative overflow-hidden flex flex-col canvas-grid">
       <ActionBars
         onOpenJsonExport={onOpenJsonExport}
+        onOpenSavedFlows={onOpenSavedFlows}
         isFullscreen={isFullscreen}
         onToggleFullscreen={onToggleFullscreen}
       />

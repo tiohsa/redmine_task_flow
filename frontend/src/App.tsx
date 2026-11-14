@@ -5,6 +5,7 @@ import { useFlowStore } from './store/useFlowStore';
 import { FlowCanvas } from './components/FlowCanvas';
 import { InspectorPanel } from './components/InspectorPanel';
 import { ResultModal, ToastContainer } from './components/ResultModal';
+import { SavedFlowsModal } from './components/SavedFlowsModal';
 import { isEditableElement } from './domain/dom';
 
 interface AppProps {
@@ -16,6 +17,7 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [exportJsonText, setExportJsonText] = useState<string | null>(null);
+  const [savedFlowsModalOpen, setSavedFlowsModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const initialize = useFlowStore((s) => s.initialize);
@@ -27,14 +29,16 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (isEditableElement(e.target)) return;
-      if (exportJsonText !== null || resultModalOpen) return;
+      if (exportJsonText !== null || resultModalOpen || savedFlowsModalOpen) {
+        return;
+      }
       e.preventDefault();
       setIsFullscreen(false);
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isFullscreen, exportJsonText, resultModalOpen]);
+  }, [isFullscreen, exportJsonText, resultModalOpen, savedFlowsModalOpen]);
 
   useEffect(() => {
     let active = true;
@@ -95,6 +99,7 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
         <ReactFlowProvider>
           <FlowCanvas
             onOpenJsonExport={(txt) => setExportJsonText(txt)}
+            onOpenSavedFlows={() => setSavedFlowsModalOpen(true)}
             isFullscreen={isFullscreen}
             onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
           />
@@ -106,6 +111,10 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
       <ResultModal
         jsonText={exportJsonText}
         onClose={() => setExportJsonText(null)}
+      />
+      <SavedFlowsModal
+        isOpen={savedFlowsModalOpen}
+        onClose={() => setSavedFlowsModalOpen(false)}
       />
       <ToastContainer />
     </>

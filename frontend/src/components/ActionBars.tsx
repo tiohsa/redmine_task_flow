@@ -3,6 +3,7 @@ import { useFlowStore } from '../store/useFlowStore';
 
 interface ActionBarsProps {
   onOpenJsonExport: (jsonText: string) => void;
+  onOpenSavedFlows?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
 }
@@ -39,6 +40,7 @@ const ToolbarDivider: React.FC = () => (
 
 export const ActionBars: React.FC<ActionBarsProps> = ({
   onOpenJsonExport,
+  onOpenSavedFlows,
   isFullscreen = false,
   onToggleFullscreen,
 }) => {
@@ -280,6 +282,30 @@ export const ActionBars: React.FC<ActionBarsProps> = ({
         </TooltipWrapper>
 
         <ToolbarDivider />
+
+        <TooltipWrapper label="保存・読込">
+          <button
+            type="button"
+            onClick={() => onOpenSavedFlows?.()}
+            aria-label="保存・読込"
+            className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80 flex items-center justify-center transition active:scale-95"
+          >
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+          </button>
+        </TooltipWrapper>
 
         <TooltipWrapper label="JSON出力">
           <button

@@ -1,6 +1,6 @@
 # 05. 永続化・JSON入出力・一括登録（Bulk Create）仕様
 
-本ドキュメントは `localStorage` による下書き自動保存、JSON エクスポート／インポート、クライアント API 通信、バックエンド一括起票（`bulk_create`）、結果モーダル、および I18n エラー仕様を定義する。
+本ドキュメントは `localStorage` による下書き自動保存、名前付きフロー保存（最大 5 件）、JSON エクスポート／インポート、クライアント API 通信、バックエンド一括起票（`bulk_create`）、結果モーダル、および I18n エラー仕様を定義する。
 
 ---
 
@@ -9,21 +9,38 @@
 * **ストレージキー**: `getDraftStorageKey(projectId, userId)` により `task_flow_draft_v1_${projectId}_${userId}` を使用する。
 * **保存データ形式（`SerializedFlowData`）**:
   * `{ schema_version: 1, baseDate: string, nodes: TaskFlowNode[], edges: TaskFlowEdge[] }`
-* **保存タイミング**: `persistDraftIfReady(state)` により、ノード／エッジ追加・削除・移動・属性変更・基準日変更・レイアウト・Undo/Redo・JSONインポート等の状態変更時に自動保存する。ただし `!state.bootstrap` または `state.isSubmitted === true` の場合は保存しない。
+* **保存タイミング**: `persistDraftIfReady(state)` により、ノード／エッジ追加・削除・移動・属性変更・基準日変更・レイアウト・Undo/Redo・JSONインポート・保存データ読込等の状態変更時に自動保存する。ただし `!state.bootstrap` または `state.isSubmitted === true` の場合は保存しない。
 * **例外保護**: `saveDraftToStorage` / `loadDraftFromStorage` / `clearDraftFromStorage` は `try/catch` で保護し、`QuotaExceededError` 等が発生してもアプリをクラッシュさせない。
 * **クリアタイミング**: `bulk_create` 成功時、`resetFlow()` 実行時、`resetToSample()` 実行時に `clearDraftFromStorage` を呼び出す。
 
 ---
 
-## 2. JSON エクスポート／インポート（`frontend/src/domain/persistence.ts`, `frontend/src/components/ResultModal.tsx`）
+## 2. `localStorage` 名前付きフロー保存・読込（最大 5 件）（`persistence.ts`, `useFlowStore.ts`, `SavedFlowsModal.tsx`）
 
-### 2.1 エクスポート（`serializeFlowJson`）
+* **ストレージキー**: `getSavedFlowsStorageKey(projectId, userId)` により `task_flow_saved_v1_${projectId}_${userId}` を使用する（自動下書きとは別枠でプロジェクト × ユーザー単位に保持）。
+* **保存上限**: `MAX_SAVED_FLOWS = 5`。5 件到達状態での新規保存はエラーメッセージを表示してブロックする（既存データの上書きまたは削除で再保存可能）。
+* **保存名バリデーション（`validateSavedFlowName`）**: 前後空白をトリムし、空文字／空白のみを拒否、最大長は `MAX_SAVED_FLOW_NAME_LENGTH = 50` 文字。同名保存は `id` により一意識別して許可する。
+* **保存データ形式（`SavedFlowEntry[]`）**:
+  * `{ id: string, name: string, updatedAt: string (ISO8601), data: SerializedFlowData }`
+  * `buildNormalizedFlowPayload` により、各ノードの `selected: false`、`data.createdIssueId: null`、各エッジの `selected: false` に正規化して保存する。
+* **操作仕様**:
+  * **新規保存（`saveCurrentFlowAsNew`）**: 名前検証と上限（5 件）確認後、現在のフローを保存配列末尾に追加して永続化する（`isSubmitted: true` 時も操作可）。
+  * **上書き保存（`overwriteSavedFlow`）**: 対象項目の `data` と `updatedAt` を現在のフローで差し替える（件数は増やさない）。
+  * **読込（`loadSavedFlow`）**: `parseAndSanitizeFlowJson` によるサニタイズ（別プロジェクト／無効 ID のフォールバック警告含む）と `pushSnapshot()` による Undo 履歴積み上げを行い、`propagateDates` を再計算して `isSubmitted: false` として復元・自動下書きへ同期し、モーダルを閉じる。
+  * **削除（`deleteSavedFlow`）**: 対象項目を一覧および `localStorage` から削除する。
+* **例外・破損保護**: `loadSavedFlowsFromStorage` / `saveSavedFlowsToStorage` は `try/catch` で保護し、破損 JSON や不正スキーマ要素を除外して最大 5 件まで読み込む。
 
-* `schema_version: 1`、`baseDate`、`nodes`、`edges` を整形済み JSON（インデント 2 スペース）として出力する。
+---
+
+## 3. JSON エクスポート／インポート（`frontend/src/domain/persistence.ts`, `frontend/src/components/ResultModal.tsx`）
+
+### 3.1 エクスポート（`serializeFlowJson`）
+
+* `buildNormalizedFlowPayload` を用いて `schema_version: 1`、`baseDate`、`nodes`、`edges` を整形済み JSON（インデント 2 スペース）として出力する。
 * 出力時は各ノードの `selected: false`、`data.createdIssueId: null`、各エッジの `selected: false` に正規化する。
 * `ResultModal` の JSON エクスポートダイアログから「JSONをコピー」（`navigator.clipboard.writeText`）または「ダウンロード」（ファイル名 `task_flow.json`）を実行できる。
 
-### 2.2 インポート（`parseAndSanitizeFlowJson`）
+### 3.2 インポート（`parseAndSanitizeFlowJson`）
 
 * JSON パース失敗時は `'JSON の形式が正しくありません'`、`schema_version !== 1` または `nodes` / `edges` が配列でない場合は `'タスクフロー形式（schema_version: 1, nodes, edges）ではありません'` を返す。
 * `bootstrap` が渡されている場合、対象プロジェクトに存在しない ID を以下の通りフォールバック／除外し、`warnings` 配列へ重複なく記録する：
@@ -40,7 +57,7 @@
 
 ---
 
-## 3. クライアント API 通信（`frontend/src/api/client.ts`）
+## 4. クライアント API 通信（`frontend/src/api/client.ts`）
 
 * `requestJson` はすべてのリクエストに `Accept: application/json`、`X-Requested-With: XMLHttpRequest`、`credentials: 'same-origin'` を付与する。
 * `GET` / `HEAD` 以外では `meta[name="csrf-token"]` から取得した `X-CSRF-Token` と `Content-Type: application/json` を付与する。
@@ -49,9 +66,9 @@
 
 ---
 
-## 4. 一括登録（`useFlowStore#submitBulkCreate` / `TaskFlowsController#bulk_create`）
+## 5. 一括登録（`useFlowStore#submitBulkCreate` / `TaskFlowsController#bulk_create`）
 
-### 4.1 送信前クライアント検証とペイロード構築
+### 5.1 送信前クライアント検証とペイロード構築
 
 1. `isSubmitting` または `isSubmitted` の場合は処理しない。`nodes.length === 0` の場合は警告トーストを出して中断する。
 2. 全ノードに対し `validateNodeAttributes(node, bootstrap)` を実行する。1 件でもエラーがあれば `validationErrors` をセットし、最初のエラーノードを選択して送信を中止する。
@@ -59,7 +76,7 @@
    * `is_group: true` のノードは `parent_temp_id: null`、`estimated_hours: null`、`start_date: null`、`due_date: null` として送信する。
    * `relations` の `relation_type` は常に `'precedes'` とする。
 
-### 4.2 コントローラの Strong Parameters（`app/controllers/task_flows_controller.rb`）
+### 5.2 コントローラの Strong Parameters（`app/controllers/task_flows_controller.rb`）
 
 * `permitted_issues_params`: `:temp_id`, `:parent_temp_id`, `:is_group`, `:tracker_id`, `:subject`, `:status_id`, `:priority_id`, `:assigned_to_id`, `:fixed_version_id`, `:estimated_hours`, `:start_date`, `:due_date`, `:description` を許可する。`custom_field_values` が `ActionController::Parameters` または `Hash` の場合はキーを文字列化して許可する。
 * `permitted_relations_params`: `:source_temp_id`, `:target_temp_id`, `:relation_type`, `:delay` を許可する。
@@ -67,11 +84,11 @@
 
 ---
 
-## 5. バックエンド一括起票サービス（`app/services/task_flow/bulk_creator.rb`）
+## 6. バックエンド一括起票サービス（`app/services/task_flow/bulk_creator.rb`）
 
 `TaskFlow::BulkCreator` は定数 `MAX_ISSUES = 100`、`MAX_RELATIONS = 200`、`ISSUE_SAFE_ATTR_KEYS` を持つ。
 
-### 5.1 トランザクション前検証（`validate_before_transaction`）
+### 6.1 トランザクション前検証（`validate_before_transaction`）
 
 DB 操作前に以下を検証し、1 件でもエラーがあれば DB に触れず `{ ok: false, errors: [...] }` を返す：
 
@@ -82,7 +99,7 @@ DB 操作前に以下を検証し、1 件でもエラーがあれば DB に触�
 5. 各 `relations` 要素：`relation_type` が `'precedes'`（省略時は `'precedes'`）であること、`source_temp_id` / `target_temp_id` がともに存在すること、自己ループでないこと、両端点が `is_group: true` でないこと、`(source_temp_id, target_temp_id)` の重複がないこと。
 6. 上記に問題がない場合、通常タスク（`!truthy?(is_group)`）のみを対象に Kahn 法（`topological_sort_tasks`）を実行し、循環依存（閉路）がないこと。
 
-### 5.2 トランザクション内の作成順序とロールバック
+### 6.2 トランザクション内の作成順序とロールバック
 
 1. `topological_sort_issues` により、`is_group: true` の親チケットを先頭、続いてトポロジカルソート順の通常チケット（`group_issues + task_issues`）に並べる。`sort_relations` で関連もソートする。
 2. `Issue.transaction` 内で各ノードを `Issue.new(project: @project, author: @user)` として生成し、`build_safe_attributes` の結果を `issue.send(:safe_attributes=, attrs, @user)` 経由で代入・保存する。
@@ -94,7 +111,7 @@ DB 操作前に以下を検証し、1 件でもエラーがあれば DB に触�
 
 ---
 
-## 6. 結果モーダル・状態遷移（`frontend/src/components/ResultModal.tsx`, `useFlowStore.ts`）
+## 7. 結果モーダル・状態遷移（`frontend/src/components/ResultModal.tsx`, `useFlowStore.ts`）
 
 * **成功時 (`201 Created`)**:
   * 各ノードに `createdIssueId`, `startDate`, `dueDate` を同期反映し、`createdIssuesMap` を更新、`isSubmitted: true`、`resultModalOpen: true`、`resultModalMode: 'success'` とする。
@@ -106,17 +123,17 @@ DB 操作前に以下を検証し、1 件でもエラーがあれば DB に触�
 
 ---
 
-## 7. I18n 仕様（`config/locales/en.yml`, `config/locales/ja.yml`）
+## 8. I18n 仕様（`config/locales/en.yml`, `config/locales/ja.yml`）
 
 `en` / `ja` 双方に以下のキーを定義する。
 
-### 7.1 プラグイン・権限ラベル
+### 8.1 プラグイン・権限ラベル
 
 * `label_task_flow`
 * `project_module_task_flow`
 * `permission_create_issues_via_flow`
 
-### 7.2 `task_flow.errors.*` エラーメッセージ一覧（14 キー）
+### 8.2 `task_flow.errors.*` エラーメッセージ一覧（14 キー）
 
 | キー | 発生条件（`BulkCreator`） |
 | :--- | :--- |

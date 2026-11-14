@@ -1,6 +1,6 @@
 # フローキャンバス・ノード・親子グループ仕様
 
-対象実装: `frontend/src/App.tsx`, `frontend/src/components/FlowCanvas.tsx`, `frontend/src/components/ActionBars.tsx`, `frontend/src/components/nodes/TaskNode.tsx`, `frontend/src/components/nodes/GroupNode.tsx`, `frontend/src/store/useFlowStore.ts`, `frontend/src/domain/dom.ts`, `frontend/src/domain/uuid.ts`, `frontend/src/index.css`
+対象実装: `frontend/src/App.tsx`, `frontend/src/components/FlowCanvas.tsx`, `frontend/src/components/ActionBars.tsx`, `frontend/src/components/SavedFlowsModal.tsx`, `frontend/src/components/nodes/TaskNode.tsx`, `frontend/src/components/nodes/GroupNode.tsx`, `frontend/src/store/useFlowStore.ts`, `frontend/src/domain/dom.ts`, `frontend/src/domain/uuid.ts`, `frontend/src/index.css`
 
 ## 1. フローキャンバス設定 (`FlowCanvas.tsx`)
 
@@ -37,6 +37,7 @@
 | 要素 / ボタン (`aria-label`) | 呼び出しアクション | 備考 |
 |---|---|---|
 | `フロー基準日` (`<input type="date">` + カレンダーアイコン) | `setBaseDate(e.target.value)` | `isSubmitted` 時は無効化。下向きツールチップ「フロー基準日」 |
+| `保存・読込` | `onOpenSavedFlows()` | `SavedFlowsModal` を開閉し、名前付きフロー保存（最大 5 件）・読込・上書き・削除を実行。`isSubmitted` 時も常時操作可 |
 | `JSON出力` | `onOpenJsonExport(exportJson())` | 常時操作可 |
 | `JSON読込` | `importJson(reader.result)` | `.json,application/json` ファイル選択 |
 | `サンプル初期化` | `resetToSample()` | 確認なしでサンプルフローへ再初期化 |
@@ -55,7 +56,7 @@
 | `Tab` | `!isSubmitted` かつ `taskNode` 選択中 | `addTaskNode({ sourceNodeId: selected.id })`（右隣に後続タスクを追加しエッジ接続） |
 | `Enter` | `!isSubmitted` かつ `taskNode` 選択中 | `addTaskNode({ siblingOfNodeId: selected.id })`（下に並列タスクを追加し全先行エッジを複製） |
 | `Delete` / `Backspace` | `!isSubmitted` かつノードまたはエッジ選択中 | `deleteSelected()` |
-| `Escape` | `isFullscreen === true` かつ入力要素外かつモーダル（`ResultModal` / JSON出力モーダル）非表示時 | 全画面表示を解除（`App.tsx` で処理） |
+| `Escape` | `isFullscreen === true` かつ入力要素外かつモーダル（`ResultModal` / `SavedFlowsModal` / JSON出力モーダル）非表示時 | 全画面表示を解除（`App.tsx` で処理）。モーダル表示中の `Escape` はモーダルのみを閉じ、全画面状態を維持する |
 
 ## 4. Undo / Redo 履歴仕様 (`useFlowStore.ts`, `FlowCanvas.tsx`)
 

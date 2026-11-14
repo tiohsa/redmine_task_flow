@@ -23,10 +23,10 @@
 | ドキュメント | 対象領域 | 主な内容 |
 |---|---|---|
 | [01-auth-and-bootstrap.md](01-auth-and-bootstrap.md) | 認証・権限・初期化 | プラグイン登録、プロジェクトモジュール、権限・メニュー表示条件、ルーティング、Bootstrap API、フロントエンド初期起動 |
-| [02-canvas-and-nodes.md](02-canvas-and-nodes.md) | キャンバス・ノード操作 | React Flow キャンバス設定、ツールバー、ショートカット、Undo/Redo、送信後ロック/リセット、タスク/グループノード、親子付け替え |
+| [02-canvas-and-nodes.md](02-canvas-and-nodes.md) | キャンバス・ノード操作 | React Flow キャンバス設定、ツールバー（保存・読込モーダル起動含む）、ショートカット、Undo/Redo、送信後ロック/リセット、タスク/グループノード、親子付け替え |
 | [03-dependencies-and-scheduling.md](03-dependencies-and-scheduling.md) | 依存関係・日程・レイアウト | `precedes` エッジ、循環依存検出 (DAG)、カレンダー日プレビュー伝播 (`delay`, `lockDates`, `baseDate`, 工数換算、ロールアップ)、`dagre` 自動整列 |
 | [04-inspector-and-validation.md](04-inspector-and-validation.md) | インスペクタ・検証 | 折りたたみ・フォーカス制御、トラッカー別コアフィールド無効化、カスタムフィールド描画、クライアント側送信前バリデーション |
-| [05-persistence-and-bulk-create.md](05-persistence-and-bulk-create.md) | 永続化・一括登録 | `localStorage` 下書き自動保存、JSON エクスポート/インポート（ID フォールバック）、`bulk_create` API、結果モーダル、I18n |
+| [05-persistence-and-bulk-create.md](05-persistence-and-bulk-create.md) | 永続化・一括登録 | `localStorage` 下書き自動保存・名前付きフロー保存（最大 5 件）、JSON エクスポート/インポート（ID フォールバック）、`bulk_create` API、結果モーダル、I18n |
 | [06-testing-and-verification.md](06-testing-and-verification.md) | テスト・検証 | Backend Minitest、Frontend Vitest、Docker 開発/テスト環境手順、実ブラウザ E2E 検証シナリオ |
 
 ## 3. 実装ファイル対応表
@@ -54,12 +54,12 @@
 - `domain/autoLayout.ts` — `dagre` 自動レイアウト → `03-dependencies-and-scheduling.md`
 - `components/InspectorPanel.tsx` — 右側属性編集パネル → `04-inspector-and-validation.md`
 - `domain/nodeValidation.ts` — 単一ノード属性バリデーション → `04-inspector-and-validation.md`
-- `domain/persistence.ts` — `localStorage` 下書き・JSON 入出力・サニタイズ → `05-persistence-and-bulk-create.md`
-- `api/client.ts`, `components/ResultModal.tsx` — API 通信・結果モーダル・トースト → `01`, `05`
+- `domain/persistence.ts` — `localStorage` 下書き・名前付きフロー保存（最大 5 件）・JSON 入出力・サニタイズ → `05-persistence-and-bulk-create.md`
+- `api/client.ts`, `components/ResultModal.tsx`, `components/SavedFlowsModal.tsx` — API 通信・結果モーダル・保存/読込モーダル・トースト → `01`, `02`, `05`
 - `domain/uuid.ts` — ノード/エッジ/トースト用 ID 生成 (`generateId`) → `02-canvas-and-nodes.md`
 - `index.css` — `.task-flow-root` スコープ用スタイル調整 → `02-canvas-and-nodes.md`
 
 ### テスト
 
 - `test/` (`test_helper.rb`, `unit/plugin_test.rb`, `unit/task_flow/*.rb`, `integration/task_flows_test.rb`) → `06-testing-and-verification.md`
-- `frontend/tests/` (`setup.ts`, `graphValidation.test.ts`, `datePropagation.test.ts`, `storeAndLayout.test.ts`, `persistence.test.ts`, `client.test.ts`, `inspectorPanel.test.tsx`) → `06-testing-and-verification.md`
+- `frontend/tests/` (`setup.ts`, `graphValidation.test.ts`, `datePropagation.test.ts`, `storeAndLayout.test.ts`, `persistence.test.ts`, `savedFlows.test.tsx`, `client.test.ts`, `inspectorPanel.test.tsx`, `actionBars.test.tsx`, `fullscreenToggle.test.tsx`, `cursorStyles.test.ts`) → `06-testing-and-verification.md`

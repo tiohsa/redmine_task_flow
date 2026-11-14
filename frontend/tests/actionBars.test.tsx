@@ -35,11 +35,13 @@ describe('ActionBars', () => {
   let container: HTMLDivElement;
   let root: Root;
   let onOpenJsonExport: ReturnType<typeof vi.fn<(jsonText: string) => void>>;
+  let onOpenSavedFlows: ReturnType<typeof vi.fn<() => void>>;
   let onToggleFullscreen: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
     window.localStorage.clear();
     onOpenJsonExport = vi.fn<(jsonText: string) => void>();
+    onOpenSavedFlows = vi.fn<() => void>();
     onToggleFullscreen = vi.fn<() => void>();
 
     useFlowStore.setState({
@@ -63,6 +65,7 @@ describe('ActionBars', () => {
       toasts: [],
       focusSubjectSeq: 0,
       isInspectorCollapsed: false,
+      savedFlows: [],
     });
 
     container = document.createElement('div');
@@ -87,6 +90,7 @@ describe('ActionBars', () => {
       root.render(
         <ActionBars
           onOpenJsonExport={onOpenJsonExport}
+          onOpenSavedFlows={onOpenSavedFlows}
           isFullscreen={props?.isFullscreen}
           onToggleFullscreen={
             props?.omitFullscreen ? undefined : onToggleFullscreen
@@ -116,6 +120,7 @@ describe('ActionBars', () => {
       '日程自動伝播',
       'Undo',
       'Redo',
+      '保存・読込',
       'JSON出力',
       'JSON読込',
       'サンプル初期化',
@@ -135,7 +140,7 @@ describe('ActionBars', () => {
     expect(dateInput!.value).toBe('2026-11-16');
 
     const tooltips = Array.from(container.querySelectorAll('[role="tooltip"]'));
-    expect(tooltips.length).toBe(12);
+    expect(tooltips.length).toBe(13);
     for (const tooltip of tooltips) {
       expect(tooltip.className).toContain('top-full');
       expect(tooltip.className).toContain('mt-2');
@@ -212,7 +217,8 @@ describe('ActionBars', () => {
     const submittedBtn = getButton('登録完了');
     expect(submittedBtn.disabled).toBe(true);
 
-    // JSON actions and fullscreen remain enabled when submitted
+    // Save/load, JSON actions and fullscreen remain enabled when submitted
+    expect(getButton('保存・読込').disabled).toBe(false);
     expect(getButton('JSON出力').disabled).toBe(false);
     expect(getButton('JSON読込').disabled).toBe(false);
     expect(getButton('サンプル初期化').disabled).toBe(false);
@@ -269,6 +275,7 @@ describe('ActionBars', () => {
       getButton('日程自動伝播').click();
       getButton('Undo').click();
       getButton('Redo').click();
+      getButton('保存・読込').click();
       getButton('JSON出力').click();
       getButton('サンプル初期化').click();
       getButton('Redmineに一括登録 (1件)').click();
@@ -281,6 +288,7 @@ describe('ActionBars', () => {
     expect(recalculateDates).toHaveBeenCalledTimes(1);
     expect(undo).toHaveBeenCalledTimes(1);
     expect(redo).toHaveBeenCalledTimes(1);
+    expect(onOpenSavedFlows).toHaveBeenCalledTimes(1);
     expect(exportJson).toHaveBeenCalledTimes(1);
     expect(onOpenJsonExport).toHaveBeenCalledWith('{"nodes":[]}');
     expect(resetToSample).toHaveBeenCalledTimes(1);

@@ -12,6 +12,7 @@ import type {
   BulkCreateRequestPayload,
   CreatedIssueResult,
   FlowSnapshot,
+  SavedFlowEntry,
   TaskFlowEdge,
   TaskFlowNode,
   TaskNodeData,
@@ -28,11 +29,16 @@ import {
 } from '../domain/autoLayout';
 import { validateNodeAttributes } from '../domain/nodeValidation';
 import {
+  buildNormalizedFlowPayload,
   clearDraftFromStorage,
   loadDraftFromStorage,
+  loadSavedFlowsFromStorage,
+  MAX_SAVED_FLOWS,
   parseAndSanitizeFlowJson,
   saveDraftToStorage,
+  saveSavedFlowsToStorage,
   serializeFlowJson,
+  validateSavedFlowName,
 } from '../domain/persistence';
 import { generateId } from '../domain/uuid';
 import { postBulkCreate, SessionExpiredError } from '../api/client';
@@ -260,6 +266,7 @@ export interface FlowStoreState {
   toasts: ToastMessage[];
   focusSubjectSeq: number;
   isInspectorCollapsed: boolean;
+  savedFlows: SavedFlowEntry[];
 
   // Initialization & toast helpers
   initialize: (
@@ -315,8 +322,26 @@ export interface FlowStoreState {
     warnings: string[];
     error?: string;
   };
+  saveCurrentFlowAsNew: (name: string) => { ok: boolean; error?: string };
+  overwriteSavedFlow: (id: string) => { ok: boolean; error?: string };
+  loadSavedFlow: (id: string) => {
+    ok: boolean;
+    warnings: string[];
+    error?: string;
+  };
+  deleteSavedFlow: (id: string) => { ok: boolean; error?: string };
   undo: () => void;
   redo: () => void;
+}
+
+function getSavedFlowScope(state: FlowStoreState): {
+  projectId: number | string;
+  userId: number | string;
+} {
+  return {
+    projectId: state.bootstrap?.project.id ?? 'default',
+    userId: state.bootstrap?.current_user_id ?? 'default',
+  };
 }
 
 function persistDraftIfReady(state: FlowStoreState): void {
@@ -327,6 +352,66 @@ function persistDraftIfReady(state: FlowStoreState): void {
     nodes: state.nodes,
     edges: state.edges,
   });
+}
+
+function applyImportedFlowJson(
+  get: () => FlowStoreState,
+  set: (partial: Partial<FlowStoreState>) => void,
+  rawJson: string,
+  successMessage: string,
+  fallbackError: string,
+): { ok: boolean; warnings: string[]; error?: string } {
+  const state = get();
+  const result = parseAndSanitizeFlowJson(rawJson, state.bootstrap);
+  if (!result.ok || !result.data) {
+    state.addToast('error', result.error ?? fallbackError);
+    return { ok: false, warnings: [], error: result.error };
+  }
+
+  state.pushSnapshot();
+  const effectiveBaseDate = result.data.baseDate || state.baseDate;
+  const nextNodes = propagateDates(
+    normalizeNodesOrder(result.data.nodes),
+    result.data.edges,
+    effectiveBaseDate,
+  );
+
+  set({
+    nodes: nextNodes,
+    edges: result.data.edges,
+    baseDate: effectiveBaseDate,
+    selectedNodeId: null,
+    selectedEdgeId: null,
+    validationErrors: {},
+    createdIssuesMap: {},
+    isSubmitted: false,
+  });
+  persistDraftIfReady(get());
+
+  for (const w of result.warnings) {
+    state.addToast('warning', w);
+  }
+  state.addToast('success', successMessage);
+  return { ok: true, warnings: result.warnings };
+}
+
+function persistSavedFlows(
+  state: FlowStoreState,
+  set: (partial: Partial<FlowStoreState>) => void,
+  nextSaved: SavedFlowEntry[],
+  toastType: ToastMessage['type'],
+  toastMessage: string,
+): { ok: boolean; error?: string } {
+  const scope = getSavedFlowScope(state);
+  const res = saveSavedFlowsToStorage(scope.projectId, scope.userId, nextSaved);
+  if (!res.ok) {
+    const errMsg = res.error ?? '保存データの書き込みに失敗しました';
+    state.addToast('error', errMsg);
+    return { ok: false, error: errMsg };
+  }
+  set({ savedFlows: nextSaved });
+  state.addToast(toastType, toastMessage);
+  return { ok: true };
 }
 
 export const useFlowStore = create<FlowStoreState>((set, get) => ({
@@ -354,10 +439,15 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
   toasts: [],
   focusSubjectSeq: 0,
   isInspectorCollapsed: false,
+  savedFlows: [],
 
   initialize: (bootstrap, bulkCreateUrl) => {
     const baseDate = todayYmd();
     const rawDraft = loadDraftFromStorage(
+      bootstrap.project.id,
+      bootstrap.current_user_id,
+    );
+    const savedFlows = loadSavedFlowsFromStorage(
       bootstrap.project.id,
       bootstrap.current_user_id,
     );
@@ -385,6 +475,7 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
           validationErrors: {},
           createdIssuesMap: {},
           isSubmitted: false,
+          savedFlows,
         });
         for (const w of imported.warnings) {
           get().addToast('warning', w);
@@ -409,6 +500,7 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
       validationErrors: {},
       createdIssuesMap: {},
       isSubmitted: false,
+      savedFlows,
     });
   },
 
@@ -1224,38 +1316,109 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
   },
 
   importJson: (rawJson) => {
-    const state = get();
-    const result = parseAndSanitizeFlowJson(rawJson, state.bootstrap);
-    if (!result.ok || !result.data) {
-      state.addToast('error', result.error ?? 'JSON の読込に失敗しました');
-      return { ok: false, warnings: [], error: result.error };
-    }
-
-    state.pushSnapshot();
-    const effectiveBaseDate = result.data.baseDate || state.baseDate;
-    const nextNodes = propagateDates(
-      normalizeNodesOrder(result.data.nodes),
-      result.data.edges,
-      effectiveBaseDate,
+    return applyImportedFlowJson(
+      get,
+      set,
+      rawJson,
+      'JSON からフローを読み込みました',
+      'JSON の読込に失敗しました',
     );
+  },
 
-    set({
-      nodes: nextNodes,
-      edges: result.data.edges,
-      baseDate: effectiveBaseDate,
-      selectedNodeId: null,
-      selectedEdgeId: null,
-      validationErrors: {},
-      createdIssuesMap: {},
-      isSubmitted: false,
-    });
-    persistDraftIfReady(get());
-
-    for (const w of result.warnings) {
-      state.addToast('warning', w);
+  saveCurrentFlowAsNew: (name) => {
+    const state = get();
+    const valid = validateSavedFlowName(name);
+    if (!valid.ok) {
+      return { ok: false, error: valid.error };
     }
-    state.addToast('success', 'JSON からフローを読み込みました');
-    return { ok: true, warnings: result.warnings };
+    if (state.savedFlows.length >= MAX_SAVED_FLOWS) {
+      return {
+        ok: false,
+        error: `保存データは最大${MAX_SAVED_FLOWS}件までです。既存のデータを上書きまたは削除してください`,
+      };
+    }
+
+    const payload = buildNormalizedFlowPayload(
+      state.nodes,
+      state.edges,
+      state.baseDate,
+    );
+    const entry: SavedFlowEntry = {
+      id: generateId('saved'),
+      name: valid.name,
+      updatedAt: new Date().toISOString(),
+      data: payload,
+    };
+    const nextSaved = [...state.savedFlows, entry];
+    return persistSavedFlows(
+      state,
+      set,
+      nextSaved,
+      'success',
+      `「${valid.name}」を保存しました`,
+    );
+  },
+
+  overwriteSavedFlow: (id) => {
+    const state = get();
+    const target = state.savedFlows.find((item) => item.id === id);
+    if (!target) {
+      return { ok: false, error: '対象の保存データが見つかりません' };
+    }
+
+    const payload = buildNormalizedFlowPayload(
+      state.nodes,
+      state.edges,
+      state.baseDate,
+    );
+    const updatedAt = new Date().toISOString();
+    const nextSaved = state.savedFlows.map((item) =>
+      item.id === id ? { ...item, updatedAt, data: payload } : item,
+    );
+    return persistSavedFlows(
+      state,
+      set,
+      nextSaved,
+      'success',
+      `「${target.name}」を上書き保存しました`,
+    );
+  },
+
+  loadSavedFlow: (id) => {
+    const state = get();
+    const target = state.savedFlows.find((item) => item.id === id);
+    if (!target) {
+      return {
+        ok: false,
+        warnings: [],
+        error: '対象の保存データが見つかりません',
+      };
+    }
+
+    return applyImportedFlowJson(
+      get,
+      set,
+      JSON.stringify(target.data),
+      `「${target.name}」を読み込みました`,
+      '保存データの読込に失敗しました',
+    );
+  },
+
+  deleteSavedFlow: (id) => {
+    const state = get();
+    const target = state.savedFlows.find((item) => item.id === id);
+    if (!target) {
+      return { ok: false, error: '対象の保存データが見つかりません' };
+    }
+
+    const nextSaved = state.savedFlows.filter((item) => item.id !== id);
+    return persistSavedFlows(
+      state,
+      set,
+      nextSaved,
+      'info',
+      `「${target.name}」を削除しました`,
+    );
   },
 
   undo: () => {
