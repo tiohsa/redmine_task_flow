@@ -285,4 +285,108 @@ describe('InspectorPanel component (integration)', () => {
     });
     expect(parentClickSpy).not.toHaveBeenCalled();
   });
+
+  it('applies responsive width, min-h-0 scroll container, min-w-0 grid children, pr-7 on selects, and bg-white on inputs in node view', () => {
+    const customBootstrap: BootstrapData = {
+      ...MOCK_BOOTSTRAP,
+      trackers: [
+        {
+          ...MOCK_BOOTSTRAP.trackers[0],
+          custom_fields: [
+            {
+              id: 101,
+              name: '種別リスト',
+              field_format: 'list',
+              is_required: false,
+              possible_values: ['A', 'B'],
+              default_value: '',
+            },
+            {
+              id: 102,
+              name: '承認済み',
+              field_format: 'bool',
+              is_required: false,
+              default_value: '',
+            },
+          ],
+        },
+      ],
+    };
+
+    useFlowStore.setState({ bootstrap: customBootstrap });
+    useFlowStore.getState().addTaskNode({ position: { x: 10, y: 10 } });
+    renderPanel();
+
+    const aside = container.querySelector('aside')!;
+    expect(aside.className).toContain('w-80');
+    expect(aside.className).toContain('max-w-full');
+    expect(aside.className).toContain('sm:w-96');
+    expect(aside.className).toContain('lg:w-[420px]');
+    expect(aside.className).toContain('xl:w-[460px]');
+
+    const scrollContainer = aside.querySelector('div.overflow-y-auto')!;
+    expect(scrollContainer).not.toBeNull();
+    expect(scrollContainer.className).toContain('flex-1');
+    expect(scrollContainer.className).toContain('min-h-0');
+
+    // Every child div inside grid-cols-2 / sm:grid-cols-2 containers has min-w-0
+    const grids = scrollContainer.querySelectorAll('.grid');
+    expect(grids.length).toBe(4);
+    grids.forEach((grid) => {
+      Array.from(grid.children).forEach((child) => {
+        expect(child.className).toContain('min-w-0');
+      });
+    });
+
+    // Schedule dates grid uses grid-cols-1 sm:grid-cols-2
+    const datesGrid = container.querySelector('#field-start-date')?.closest('.grid');
+    expect(datesGrid).not.toBeNull();
+    expect(datesGrid!.className).toContain('grid-cols-1');
+    expect(datesGrid!.className).toContain('sm:grid-cols-2');
+
+    // All selects (5 standard + 2 custom) have pl-2.5 pr-7 and not px-2.5
+    const selects = container.querySelectorAll('select');
+    expect(selects.length).toBe(7);
+    selects.forEach((select) => {
+      expect(select.className).toContain('pl-2.5');
+      expect(select.className).toContain('pr-7');
+      expect(select.className).not.toContain('px-2.5');
+    });
+
+    // Text/number/textarea inputs have bg-white and disabled:bg-slate-100
+    ['#field-subject', '#field-estimated-hours', '#field-description'].forEach(
+      (selector) => {
+        const el = container.querySelector(selector)!;
+        expect(el).not.toBeNull();
+        expect(el.className).toContain('bg-white');
+        expect(el.className).toContain('disabled:bg-slate-100');
+      },
+    );
+  });
+
+  it('applies min-h-0 scroll container and bg-white on edge-delay-input in edge view', () => {
+    const id1 = useFlowStore.getState().addTaskNode({ position: { x: 0, y: 0 } });
+    const id2 = useFlowStore.getState().addTaskNode({ position: { x: 200, y: 0 } });
+    useFlowStore.getState().connectNodes({
+      source: id1,
+      target: id2,
+      sourceHandle: null,
+      targetHandle: null,
+    });
+    const edgeId = useFlowStore.getState().edges[0].id;
+    useFlowStore.getState().selectEdge(edgeId);
+
+    renderPanel();
+
+    const aside = container.querySelector('aside')!;
+    const scrollContainer = aside.querySelector('div.overflow-y-auto')!;
+    expect(scrollContainer).not.toBeNull();
+    expect(scrollContainer.className).toContain('flex-1');
+    expect(scrollContainer.className).toContain('min-h-0');
+
+    const delayInput = container.querySelector('#edge-delay-input')!;
+    expect(delayInput).not.toBeNull();
+    expect(delayInput.className).toContain('bg-white');
+    expect(delayInput.className).toContain('disabled:bg-slate-100');
+  });
 });

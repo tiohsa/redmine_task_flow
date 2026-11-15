@@ -65,6 +65,8 @@ export const InspectorPanel: React.FC = () => {
   ) => {
     const commonClass =
       'w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-xs focus:outline-none focus:border-sky-500 disabled:bg-slate-100';
+    const selectClass =
+      'w-full border border-slate-300 rounded-lg pl-2.5 pr-7 py-1.5 bg-white text-xs focus:outline-none focus:border-sky-500 disabled:bg-slate-100';
 
     if (cf.field_format === 'list') {
       return (
@@ -72,7 +74,7 @@ export const InspectorPanel: React.FC = () => {
           value={value}
           disabled={isSubmitted}
           onChange={(e) => onChangeVal(e.target.value)}
-          className={commonClass}
+          className={selectClass}
         >
           <option value="">（選択してください）</option>
           {(cf.possible_values ?? []).map((opt) => (
@@ -90,7 +92,7 @@ export const InspectorPanel: React.FC = () => {
           value={value}
           disabled={isSubmitted}
           onChange={(e) => onChangeVal(e.target.value)}
-          className={commonClass}
+          className={selectClass}
         >
           <option value="">（未選択）</option>
           <option value="1">はい</option>
@@ -181,7 +183,7 @@ export const InspectorPanel: React.FC = () => {
       const delay = Number(selectedEdge.data?.delay ?? 0) || 0;
 
       return (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
           <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl text-xs text-sky-900 space-y-1">
             <div className="font-bold">先行・後続関係 (precedes)</div>
             <p className="text-sky-700">
@@ -227,7 +229,7 @@ export const InspectorPanel: React.FC = () => {
                 onChange={(e) =>
                   updateEdgeDelay(selectedEdge.id, Number(e.target.value))
                 }
-                className="w-24 border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+                className="w-24 border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-sm font-medium focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
               />
               <span className="text-xs text-slate-500">
                 日（0〜60、0 = 翌日から着手）
@@ -259,7 +261,7 @@ export const InspectorPanel: React.FC = () => {
           : null;
 
       return (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 text-xs">
           {errors.length > 0 && (
             <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs space-y-1">
               <div className="font-bold">入力エラーがあります</div>
@@ -317,13 +319,13 @@ export const InspectorPanel: React.FC = () => {
                 )
               }
               onBlur={() => commitSnapshotOnBlur(true)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-sm focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
             />
           </div>
 
           {/* Tracker & Status */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="min-w-0">
               <label
                 htmlFor="field-tracker"
                 className="block font-semibold text-slate-700 mb-1"
@@ -339,7 +341,7 @@ export const InspectorPanel: React.FC = () => {
                     trackerId: Number(e.target.value),
                   })
                 }
-                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+                className="w-full border border-slate-300 rounded-lg pl-2.5 pr-7 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
               >
                 {(bootstrap?.trackers ?? []).map((t) => (
                   <option key={t.id} value={t.id}>
@@ -348,7 +350,7 @@ export const InspectorPanel: React.FC = () => {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="min-w-0">
               <label
                 htmlFor="field-status"
                 className="block font-semibold text-slate-700 mb-1"
@@ -364,7 +366,7 @@ export const InspectorPanel: React.FC = () => {
                     statusId: Number(e.target.value),
                   })
                 }
-                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+                className="w-full border border-slate-300 rounded-lg pl-2.5 pr-7 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
               >
                 {availableStatuses.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -377,7 +379,7 @@ export const InspectorPanel: React.FC = () => {
 
           {/* Priority & Assignee */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="min-w-0">
               <label
                 htmlFor="field-priority"
                 className="block font-semibold text-slate-700 mb-1"
@@ -393,7 +395,7 @@ export const InspectorPanel: React.FC = () => {
                     priorityId: Number(e.target.value),
                   })
                 }
-                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+                className="w-full border border-slate-300 rounded-lg pl-2.5 pr-7 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
               >
                 {(bootstrap?.priorities ?? []).map((p) => (
                   <option key={p.id} value={p.id}>
@@ -403,11 +405,11 @@ export const InspectorPanel: React.FC = () => {
               </select>
             </div>
             <div
-              className={
+              className={`min-w-0 ${
                 disabledFields.has('assigned_to_id')
                   ? 'opacity-40 pointer-events-none'
                   : ''
-              }
+              }`}
             >
               <label
                 htmlFor="field-assignee"
@@ -426,7 +428,7 @@ export const InspectorPanel: React.FC = () => {
                       : null,
                   })
                 }
-                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+                className="w-full border border-slate-300 rounded-lg pl-2.5 pr-7 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
               >
                 <option value="">（未割当）</option>
                 {(bootstrap?.assignable_users ?? []).map((u) => (
@@ -441,11 +443,11 @@ export const InspectorPanel: React.FC = () => {
           {/* Version & Estimated Hours */}
           <div className="grid grid-cols-2 gap-3">
             <div
-              className={
+              className={`min-w-0 ${
                 disabledFields.has('fixed_version_id')
                   ? 'opacity-40 pointer-events-none'
                   : ''
-              }
+              }`}
             >
               <label
                 htmlFor="field-version"
@@ -464,7 +466,7 @@ export const InspectorPanel: React.FC = () => {
                       : null,
                   })
                 }
-                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+                className="w-full border border-slate-300 rounded-lg pl-2.5 pr-7 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
               >
                 <option value="">（なし）</option>
                 {(bootstrap?.versions ?? []).map((v) => (
@@ -476,11 +478,11 @@ export const InspectorPanel: React.FC = () => {
             </div>
 
             <div
-              className={
+              className={`min-w-0 ${
                 isGroup || disabledFields.has('estimated_hours')
                   ? 'opacity-60'
                   : ''
-              }
+              }`}
             >
               <label
                 htmlFor="field-estimated-hours"
@@ -506,7 +508,7 @@ export const InspectorPanel: React.FC = () => {
                       e.target.value === '' ? null : Number(e.target.value),
                   })
                 }
-                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+                className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
               />
             </div>
           </div>
@@ -535,8 +537,8 @@ export const InspectorPanel: React.FC = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="min-w-0">
                 <label
                   htmlFor="field-start-date"
                   className="block text-[11px] text-slate-500 mb-1"
@@ -560,7 +562,7 @@ export const InspectorPanel: React.FC = () => {
                   className="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label
                   htmlFor="field-due-date"
                   className="block text-[11px] text-slate-500 mb-1"
@@ -656,7 +658,7 @@ export const InspectorPanel: React.FC = () => {
                 )
               }
               onBlur={() => commitSnapshotOnBlur(true)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-sky-500 disabled:bg-slate-100"
             />
           </div>
         </div>
@@ -741,7 +743,7 @@ export const InspectorPanel: React.FC = () => {
   return (
     <aside
       aria-label="インスペクタパネル"
-      className="w-80 sm:w-96 bg-white border-l border-slate-200 shadow-lg z-20 flex flex-col shrink-0"
+      className="w-80 max-w-full sm:w-96 lg:w-[420px] xl:w-[460px] bg-white border-l border-slate-200 shadow-lg z-20 flex flex-col shrink-0"
     >
       <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-2 bg-slate-50">
         <div className="min-w-0">

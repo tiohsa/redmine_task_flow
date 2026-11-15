@@ -31,6 +31,7 @@
 .task-flow-root input,
 .task-flow-root select,
 .task-flow-root textarea {
+  margin: 0;
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
