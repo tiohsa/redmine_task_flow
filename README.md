@@ -65,21 +65,21 @@ npm test
 
 ### Backend (Minitest)
 
-> **Prerequisite:** The parent `../../docker-compose.yml` defaults to `RAILS_ENV=production` and does not define a `test` database in `config/database.yml`. Configure and prepare a separate `test` database in Redmine's `config/database.yml` before running backend tests.
+From the plugin root, run Minitest in Docker. The script prepares `redmine_task_flow_test` in the parent MariaDB container and runs Rails in a temporary container. The first run fetches test gems from RubyGems.
 
-From the Redmine root:
+```bash
+bash verification/run-minitest.sh
+```
+
+For a native Redmine installation, configure and migrate a dedicated `test:` database in `config/database.yml`, then run this from the Redmine root.
 
 ```bash
 RAILS_ENV=test bundle exec rails test plugins/redmine_task_flow/test
 ```
 
-Or inside the Docker Compose `redmine` container (from `plugins/redmine_task_flow`):
+### Browser E2E
 
-```bash
-docker compose -f ../../docker-compose.yml exec -e RAILS_ENV=test redmine bundle exec rails test plugins/redmine_task_flow/test
-```
-
-Browser verification against a running Redmine instance (e.g. `http://localhost:3000`) should also be performed for UI flows, persistence, and permission checks.
+From the plugin root, run `bash verification/start-e2e.sh`. The evaluation instance uses a separate database in the parent MariaDB container. Sign in as `task-flow-e2e` with password `task-flow-e2e-local`, then open the [E2E Task Flow project](http://127.0.0.1:3001/projects/task-flow-e2e/task_flow). See the [verification guide](docs/06-testing-and-verification.md#12-実ブラウザー-e2e-用のデータベースと起動手順) for the setup and test scenarios.
 
 ## Repository Structure
 

@@ -18,40 +18,55 @@
 * 起動: `docker compose -f ../../docker-compose.yml up -d`
 * プラグイン変更の反映: `docker compose -f ../../docker-compose.yml restart redmine`
 
-### 1.2 Rails テスト実行前提とコマンド
+### 1.2 実ブラウザー E2E 用のデータベースと起動手順
 
-* **重要前提**: Docker Compose の既定値は `RAILS_ENV=production` であり、コンテナ内の `config/database.yml` には `production:` のみが定義されている。`RAILS_ENV=test` でテストを実行するには、事前に Redmine 本体の `config/database.yml` に専用の `test:` DB を設定し、テスト用 DB のマイグレーション／準備を行う必要がある。
-* **全テスト実行（プラグインルートから）**:
+プラグインルートで `bash verification/start-e2e.sh` を実行する。親 Compose の `db` を起動または再利用し、同じ MariaDB に `redmine_task_flow_e2e` を作成する。評価専用の Redmine はこの DB だけに接続できるアカウントを使い、ホストの `127.0.0.1:3001` に公開される。通常の Redmine は `http://localhost:3000` を使う。
+
+| 項目 | 値 |
+| :--- | :--- |
+| 評価プロジェクト | `http://127.0.0.1:3001/projects/task-flow-e2e/task_flow` |
+| ログイン | `task-flow-e2e` |
+| パスワード | `task-flow-e2e-local` |
+
+- 初回は DB のマイグレーションと Redmine の既定データの投入を行い、タスクフローを有効にした非公開プロジェクトと起票権限を持つ非管理者ユーザーを作成する。
+- 再実行してもプロジェクトやユーザーは重複せず、E2E で作成したチケットは DB ボリュームに保持される。
+- フロントエンドの変更を確認するときは `npm --prefix frontend run build` を実行する。プラグインの変更を読み直すには `docker compose -f ../../docker-compose.yml -f verification/compose.e2e.yml restart task-flow-e2e` を実行する。
+- DB の準備や起動が失敗した場合はスクリプトが非ゼロで終了する。通常の `redmine` DB への接続は、評価用アカウントでは拒否されることを確認する。
+- 終了時は `docker compose -f ../../docker-compose.yml -f verification/compose.e2e.yml stop task-flow-e2e` で評価用 Redmine を停止できる。
+
+### 1.3 Rails テスト実行前提とコマンド
+
+* **全テスト実行（プラグインルートから）**。同じ MariaDB に `redmine_task_flow_test` を用意し、専用アカウントと `RAILS_ENV=test` を使う一時コンテナでマイグレーションと Minitest を実行する。初回はテスト用 gem の取得に RubyGems への接続が必要。2 回目以降は Docker ボリューム内の gem を再利用する。
   ```bash
-  docker compose -f ../../docker-compose.yml exec -e RAILS_ENV=test redmine bundle exec rails test plugins/redmine_task_flow/test
+  bash verification/run-minitest.sh
   ```
 * **単一ファイル実行例**:
   ```bash
-  docker compose -f ../../docker-compose.yml exec -e RAILS_ENV=test redmine bundle exec rails test plugins/redmine_task_flow/test/unit/plugin_test.rb
+  bash verification/run-minitest.sh plugins/redmine_task_flow/test/unit/plugin_test.rb
   ```
-* **Docker を使わない場合（Redmine 本体ルートから）**:
+* **Docker を使わない場合（Redmine 本体ルートから）**。専用の `test:` DB を `config/database.yml` に設定し、マイグレーションを実行する。
   ```bash
   RAILS_ENV=test bundle exec rails test plugins/redmine_task_flow/test
   ```
 
-### 1.3 フロントエンド ビルド・テストコマンド（`frontend/package.json`）
+### 1.4 フロントエンド ビルド・テストコマンド（`frontend/package.json`）
 
 `frontend/` ディレクトリで実行する。
 
 * **単体テスト（Vitest）**: `npm test`（`vitest run`）
 * **型チェック＆本番バンドルビルド**: `npm run build`（`tsc -b && vite build` → `../assets/javascripts/task_flow.js` および `../assets/stylesheets/task_flow.css` へ出力）
 
-### 1.4 統合検証
+### 1.5 統合検証
 
 プラグインルートで `node verification/verify-cli.mjs` を実行する。`npm --prefix frontend run --silent verify:all` でも同じ検証が実行される。Node.js・Ruby とインストール済みのフロントエンド依存を用意する。
 
-- 全体検証は、機能マップ、境界・仕様対応・テスト品質のチェックとその回帰テスト、TypeScript、Vitest、一時ディレクトリへの Vite ビルド、Docker 上の Minitest、Playwright の順に実行する。Minitest には 1.2 の専用 test DB が必要。
+- 全体検証は、機能マップ、境界・仕様対応・テスト品質のチェックとその回帰テスト、TypeScript、Vitest、一時ディレクトリへの Vite ビルド、Docker 上の Minitest、Playwright の順に実行する。Minitest の専用 test DB は §1.3 のスクリプトで準備する。
 - ブラウザースモークには既存の Playwright と Chromium を使う。Playwright を通常のモジュール検索で読み込めない場合は `TASK_FLOW_PLAYWRIGHT_MODULE` にモジュールディレクトリの絶対パスを設定する。インストール済みの Chrome を使用する場合は `TASK_FLOW_BROWSER_CHANNEL=chrome` を指定する。接続先は `TASK_FLOW_REDMINE_URL` で指定でき、既定値は `http://localhost:3000`。
 - スモークは [既存のシナリオ](fullscreen-layering/browser-check.js) を呼び出し、Redmine のログイン画面で一時ビルドした JS/CSS と模擬 API を使って全画面、ノード追加、モーダル、エラー表示を確認する。認証後の権限、実 DB への保存、D&D、下書き復元は §4 の実環境シナリオに従って確認する。
 - `node verification/verify-cli.mjs --local` は機能マップ、静的チェックとその回帰テスト、TypeScript、Vitest、Vite を実行する。Docker・ブラウザーを用意できない場合や GitHub Actions で使う。
 - 標準出力は `status`、`scope`、各チェックの `durationMs` と成否、`metrics`、スクリーンショットの `artifacts` を含む JSON。全体検証では Chrome 起動を含むブラウザースモークの所要時間を `metrics.browserSmokeDurationMs` に出力する。機能マップで定めた上限（60 秒）を超えるか、選んだ範囲のチェックが失敗した場合は終了コード 1 を返す。実行ログは標準エラー出力に出す。[機能とチェックの対応](../verification/feature-map.json)
 
-### 1.5 境界チェックと Ratchet Mode
+### 1.6 境界チェックと Ratchet Mode
 
 `node verification/check-architecture.mjs` は既存の TypeScript 7 の AST と Ruby 標準の Ripper を使う。TypeScript は `tsconfig.json` の対象に含まれる `frontend/src/` と `frontend/tests/`、Ruby は `app/`、`config/`、`test/` 配下の `.rb` と `init.rb` を検査する。モジュール境界は TypeScript の相対パス、Vite の `/src/` パス、Ruby の明示的な機能定数参照と読み込みを対象とする。動的な Ruby 定数参照や別名による間接参照はコードレビューで確認する。
 
@@ -124,9 +139,9 @@ GitHub Actions の PR 検証では、ベースブランチの例外一覧が存�
 
 ---
 
-## 4. 実ブラウザ E2E 検証シナリオ（Docker 上の Redmine `http://localhost:3000`）
+## 4. 実ブラウザ E2E 検証シナリオ（Docker 上の評価用 Redmine）
 
-JS / CSS / ERB / バックエンド変更時は、Docker 上の Redmine（`http://localhost:3000`）で以下を検証する。各シナリオは空の `localStorage` から開始する。
+JS / CSS / ERB / バックエンド変更時は、§1.2 の評価用 Redmine（`http://127.0.0.1:3001`）で以下を検証する。各シナリオは空の `localStorage` から開始する。
 
 1. **初期表示・画面統合・アイコンツールバー確認**:
    * 対象プロジェクトで `task_flow` モジュール有効化・3 権限付与時に「タスクフロー」タブが表示され、2 ペイン UI が Redmine ヘッダ／スタイルと干渉せず描画されること。

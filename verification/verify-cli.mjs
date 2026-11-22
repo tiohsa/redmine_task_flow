@@ -68,10 +68,7 @@ if (args.length && !local) {
     await run('vitest', 'npm', ['test'], { cwd: frontend });
     await run('vite-build', process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--outDir', build], { cwd: frontend });
     if (!local) {
-      const compose = ['compose', '-f', '../../docker-compose.yml', 'exec', '-T', '-e', 'RAILS_ENV=test', 'redmine'];
-      await run('rails-test-config', 'docker', [...compose, 'ruby', '-rerb', '-ryaml', '-e',
-        'c = YAML.safe_load(ERB.new(File.read("config/database.yml")).result, aliases: true); abort "Configure a dedicated test database in config/database.yml" unless c["test"].is_a?(Hash) && !c["test"].empty?']);
-      await run('minitest', 'docker', [...compose, 'bundle', 'exec', 'rails', 'test', 'plugins/redmine_task_flow/test'], { after: 'rails-test-config' });
+      await run('minitest', 'bash', ['verification/run-minitest.sh']);
       const smoke = await run('browser-smoke', process.execPath, ['verification/browser-smoke.mjs', build, output], { after: 'vite-build' });
       if (smoke) {
         metrics.browserSmokeDurationMs = smoke.durationMs;

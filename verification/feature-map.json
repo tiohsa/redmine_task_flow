@@ -29,6 +29,16 @@
           "invariants": ["成功時にチケットと依存関係を保存する", "失敗時は全件をロールバックし、画面にエラーを表示する"]
         },
         {
+          "id": "docker-e2e-database",
+          "checks": ["verification/start-e2e.sh", "docs/06-testing-and-verification.md §4"],
+          "invariants": ["評価用 Redmine は同じ MariaDB 内の専用 DB に接続する", "起動を繰り返しても評価用チケットを保持する"]
+        },
+        {
+          "id": "docker-minitest-database",
+          "checks": ["minitest"],
+          "invariants": ["Rails の fixture は同じ MariaDB 内の Minitest 専用 DB を使う"]
+        },
+        {
           "id": "fullscreen-layering",
           "checks": ["vitest", "browser-smoke"],
           "invariants": ["全画面でもノード数を維持する", "モーダルとトーストを前面に表示する"]

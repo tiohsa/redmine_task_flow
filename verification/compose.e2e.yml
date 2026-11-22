@@ -1,0 +1,44 @@
+services:
+  task-flow-e2e:
+    image: redmine:7.0.2
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      RAILS_ENV: production
+      REDMINE_DB_MYSQL: db
+      REDMINE_DB_DATABASE: redmine_task_flow_e2e
+      REDMINE_DB_USERNAME: task_flow_e2e
+      REDMINE_DB_PASSWORD: task-flow-e2e-db-local
+    volumes:
+      - ./plugins/redmine_task_flow:/usr/src/redmine/plugins/redmine_task_flow:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "ruby", "-rnet/http", "-e", "exit(Net::HTTP.get_response(URI('http://127.0.0.1:3000/login')).is_a?(Net::HTTPOK))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  task-flow-minitest:
+    image: redmine:7.0.2
+    profiles: [minitest]
+    environment:
+      RAILS_ENV: test
+      REDMINE_DB_MYSQL: db
+      REDMINE_DB_DATABASE: redmine_task_flow_test
+      REDMINE_DB_USERNAME: task_flow_test
+      REDMINE_DB_PASSWORD: task-flow-minitest-db-local
+      # The image's Bundler configuration excludes the test group.
+      BUNDLE_APP_CONFIG: /tmp/task-flow-bundle
+      BUNDLE_WITHOUT: development
+    volumes:
+      - ./plugins/redmine_task_flow:/usr/src/redmine/plugins/redmine_task_flow:ro
+      - task-flow-test-gems:/usr/local/bundle
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  task-flow-test-gems:

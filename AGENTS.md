@@ -45,13 +45,13 @@ npm test             # Vitest 実行
 - コンテナ内実行（プラグインルートから）:
 
 ```bash
-docker compose -f ../../docker-compose.yml exec -e RAILS_ENV=test redmine bundle exec rails test plugins/redmine_task_flow/test
+bash verification/run-minitest.sh
 ```
 
 - 単一ファイル実行例:
 
 ```bash
-docker compose -f ../../docker-compose.yml exec -e RAILS_ENV=test redmine bundle exec rails test plugins/redmine_task_flow/test/unit/task_flow/bulk_creator_test.rb
+bash verification/run-minitest.sh plugins/redmine_task_flow/test/unit/task_flow/bulk_creator_test.rb
 ```
 
 - Docker を使わない場合（Redmine 本体のルートから）:
@@ -60,7 +60,7 @@ docker compose -f ../../docker-compose.yml exec -e RAILS_ENV=test redmine bundle
 RAILS_ENV=test bundle exec rails test plugins/redmine_task_flow/test
 ```
 
-- **前提**: `../../docker-compose.yml` の既定値は `RAILS_ENV=production` であり、コンテナ内の `config/database.yml` には `test:` DB 設定が含まれていない。`RAILS_ENV=test` を実行する前に Redmine 本体の `config/database.yml` へ専用の `test` DB を設定・準備する。
+- Docker では `run-minitest.sh` が同じ MariaDB に `redmine_task_flow_test` を用意し、`RAILS_ENV=test` の一時コンテナでマイグレーションとテストを実行する。Docker 外で実行する場合は Redmine 本体の `config/database.yml` に専用の `test:` DB を設定・準備する。
 
 ## テスト・検証要件
 
@@ -68,7 +68,7 @@ RAILS_ENV=test bundle exec rails test plugins/redmine_task_flow/test
 - プラグインルートで `node verification/verify-cli.mjs` を実行する。Docker・Playwright の準備と `--local` の範囲は [テスト・検証仕様](docs/06-testing-and-verification.md) を参照する。
 - 公開入口から観測できる結果に対して Minitest／Vitest の回帰テストを書く。境界値・失敗系とテスト ID の対応を仕様で確認する。[テスト品質ルール](agents/rules/testing-anti-patterns.md)
 - 利用者向けの入口や検証シナリオを変更したら [機能マップ](verification/feature-map.json) の対応箇所を更新する。
-- **実ブラウザでのテストを必須とする**: 単体テスト・結合テストに加え、UI や API 挙動を変更した場合は Docker 上の Redmine（`http://localhost:3000`）に実ブラウザでアクセスし、画面初期表示、ノード/エッジ操作・D&D、一括起票とエラー表示、再読み込み後の保存結果・下書き復元、権限不足時の挙動を確認する。
+- **実ブラウザでのテストを必須とする**: 単体テスト・結合テストに加え、UI や API 挙動を変更した場合は `bash verification/start-e2e.sh` で評価用 Redmine（`http://127.0.0.1:3001`）を起動する。実ブラウザで画面初期表示、ノード/エッジ操作・D&D、一括起票とエラー表示、再読み込み後の保存結果・下書き復元、権限不足時の挙動を確認する。
 - 実行したコマンドと結果を報告し、環境制約により実行できなかった検証は明記する。
 
 ## 新規機能の境界
