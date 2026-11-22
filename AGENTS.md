@@ -14,7 +14,7 @@ Redmine 6.0 / 6.1 / 7.0 向けのビジュアル DAG タスクフローエディ
   - `bootstrap_presenter.rb`: プロジェクト・トラッカー・許可ステータス・可視カスタムフィールド・担当者・バージョン情報を整形。
   - `bulk_creator.rb`: 事前検証（上限・構造・循環依存）と `Issue.transaction` 内でのトポロジカル順一括起票・ロールバック。
 - `app/views/task_flows/index.html.erb`: React マウントポイント（`#redmine-task-flow-root.task-flow-root`）へ `data-*` 属性で設定を渡す（API キーは出力しない）。
-- `frontend/`: React 18 + TypeScript + `@xyflow/react` + Zustand + `dagre` + Tailwind CSS（`.task-flow-root` スコープ、Preflight 無効）+ Vite / Vitest。
+- `frontend/`: React + TypeScript + `@xyflow/react` + Zustand + `@dagrejs/dagre` + Tailwind CSS（`.task-flow-root` スコープ、Preflight 無効）+ Vite / Vitest。
 - `assets/javascripts/task_flow.js`, `assets/stylesheets/task_flow.css`: `frontend/` のビルド生成物（IIFE 単一バンドル）。直接編集せず `frontend/src/` を編集して再ビルドする。
 - `test/`: Redmine 本体のテストヘルパーを使う Minitest（`unit/` と `integration/`）。
 - `docs/`: **機能ごとの仕様・設計・テスト仕様の正本（Source of Truth）**。機能ごとに仕様書を整理し、古い記述や不要なファイルを残さず常に実装と一致した最新状態に保つ。
@@ -64,9 +64,19 @@ RAILS_ENV=test bundle exec rails test plugins/redmine_task_flow/test
 
 ## テスト・検証要件
 
-- 変更内容に応じてバックエンド（Minitest）およびフロントエンド（Vitest）の回帰テストを追加・実行する。
+- 新規機能や仕様に関わる修正は、実装前に `docs/` の該当仕様（新規機能は該当ディレクトリの `SPEC.md`）で受け入れ条件、正常系、境界値、失敗時の振る舞いと必要なテストを確定する。
+- プラグインルートで `node verification/verify-cli.mjs` を実行する。Docker・Playwright の準備と `--local` の範囲は [テスト・検証仕様](docs/06-testing-and-verification.md) を参照する。
+- 公開入口から観測できる結果に対して Minitest／Vitest の回帰テストを書く。境界値・失敗系とテスト ID の対応を仕様で確認する。[テスト品質ルール](agents/rules/testing-anti-patterns.md)
+- 利用者向けの入口や検証シナリオを変更したら [機能マップ](verification/feature-map.json) の対応箇所を更新する。
 - **実ブラウザでのテストを必須とする**: 単体テスト・結合テストに加え、UI や API 挙動を変更した場合は Docker 上の Redmine（`http://localhost:3000`）に実ブラウザでアクセスし、画面初期表示、ノード/エッジ操作・D&D、一括起票とエラー表示、再読み込み後の保存結果・下書き復元、権限不足時の挙動を確認する。
 - 実行したコマンドと結果を報告し、環境制約により実行できなかった検証は明記する。
+
+## 新規機能の境界
+
+- UI・ストア → `frontend/src/features/<feature>/index.ts` → ドメインの順に依存させる。Rails はコントローラー → `TaskFlow::Features::<Feature>::Public`（`app/services/task_flow/features/<feature>/public.rb`）→ ドメインの順に依存させる。
+- 他の機能や UI からは公開入口を使う。機能内の純粋な処理は `internal/domain/` に置く。[実装例](verification/_reference-example/README.md)と[ルール一覧](agents/rules/_sections.md)を参照する。
+- 境界とテスト品質の既存例外は Ratchet Mode で追跡する。例外を解消したら同じ変更でベースラインから削除する。
+- 同種のレビュー修正が 2 回発生したら、静的ルールまたは共通の安全な API に落とし込む。
 
 ## コード規約・セキュリティ
 

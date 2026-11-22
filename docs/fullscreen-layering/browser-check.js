@@ -1,5 +1,5 @@
-async (page) => {
-  await page.goto('http://localhost:3000/login', {waitUntil:'domcontentloaded',timeout:15000});
+async (page, {baseUrl = 'http://localhost:3000', assetBaseUrl = 'http://127.0.0.1:8787', artifactDir = '/tmp'} = {}) => {
+  await page.goto(baseUrl + '/login', {waitUntil:'domcontentloaded',timeout:15000});
   let calls=0, bulkCalls=0;
   await page.route('**/__task_flow_review/bootstrap', route => { calls++; return route.fulfill({json:{
     project:{id:987654,identifier:'review-fixture',name:'Review fixture'},
@@ -20,8 +20,8 @@ async (page) => {
     root.dataset.bootstrapUrl='/__task_flow_review/bootstrap'; root.dataset.bulkCreateUrl='/__task_flow_review/bulk';
     document.querySelector('#content').append(root);
   });
-  await page.addStyleTag({url:'http://127.0.0.1:8787/stylesheets/task_flow.css'});
-  await page.addScriptTag({url:'http://127.0.0.1:8787/javascripts/task_flow.js'});
+  await page.addStyleTag({url:assetBaseUrl + '/stylesheets/task_flow.css'});
+  await page.addScriptTag({url:assetBaseUrl + '/javascripts/task_flow.js'});
   const editor=page.locator('[data-testid="task-flow-editor-container"]');
   const check=(ok,msg)=>{if(!ok) throw new Error(msg);};
   await editor.waitFor();
@@ -33,7 +33,7 @@ async (page) => {
     await page.waitForFunction(()=>document.querySelector('[data-fullscreen="true"]'));
     const info=await page.evaluate(()=>{
       const ed=document.querySelector('[data-fullscreen="true"]'), header=document.querySelector('#header');
-      const button=[...ed.querySelectorAll('button')].find(b=>b.textContent.includes('タスク追加'));
+      const button=ed.querySelector('button[aria-label="タスク追加"]');
       const r=button.getBoundingClientRect(), rect=ed.getBoundingClientRect();
       return {rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},
         z:getComputedStyle(ed).zIndex,headerZ:getComputedStyle(header).zIndex,
@@ -44,14 +44,14 @@ async (page) => {
     const count=await page.locator('.react-flow__node').count();
     await page.getByRole('button',{name:'タスク追加',exact:true}).click();
     check(await page.locator('.react-flow__node').count()===count+1,'toolbar click');
-    await page.screenshot({path:'/tmp/task-flow-fullscreen-'+size.width+'.png'});
+    await page.screenshot({path:artifactDir+'/task-flow-fullscreen-'+size.width+'.png'});
     await page.getByRole('button',{name:'JSON出力',exact:true}).click();
     const modal=page.locator('.task-flow-modal');
     await modal.waitFor();
     check(await modal.evaluate(el=>el.contains(document.elementFromPoint(10,10))),'modal behind header/editor');
     await page.keyboard.press('Escape');
     check(await editor.getAttribute('data-fullscreen')==='true','modal Escape exits fullscreen');
-    await page.getByRole('button',{name:'閉じる',exact:true}).click();
+    await modal.getByText('閉じる',{exact:true}).click();
     await page.getByRole('button',{name:'全画面解除',exact:true}).click();
     check(await editor.getAttribute('data-fullscreen')==='false','toggle off');
     check(await page.locator('.react-flow__node').count()===count+1,'state lost');
@@ -66,7 +66,7 @@ async (page) => {
     await toast.waitFor();
     check(await toast.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),'toast behind modal');
     await toast.locator('>div').last().click();
-    await page.getByRole('button',{name:'閉じる',exact:true}).click();
+    await page.locator('.task-flow-modal').getByText('閉じる',{exact:true}).click();
   }
   await page.getByRole('button',{name:'全画面解除',exact:true}).click();
   check(calls===initialBootstrapCalls,'unexpected bootstrap re-fetch');

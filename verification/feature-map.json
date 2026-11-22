@@ -1,0 +1,39 @@
+{
+  "features": [
+    {
+      "id": "task-flow-editor",
+      "entryPoint": "/projects/:project_id/task_flow",
+      "performanceBudget": {
+        "maxSmokeDurationMs": 60000
+      },
+      "selectors": {
+        "root": "#redmine-task-flow-root",
+        "editor": "[data-testid=\"task-flow-editor-container\"]",
+        "addTask": "button[aria-label=\"タスク追加\"]",
+        "fullscreen": "button[aria-label=\"全画面表示\"]"
+      },
+      "flows": [
+        {
+          "id": "bootstrap-and-permissions",
+          "checks": ["minitest"],
+          "invariants": ["初期データは許可されたプロジェクトのもの", "画面と API はセッション・権限・CSRF の契約を維持する"]
+        },
+        {
+          "id": "edit-and-restore",
+          "checks": ["vitest"],
+          "invariants": ["循環依存を拒否する", "保存済みフローと下書きを復元できる"]
+        },
+        {
+          "id": "bulk-create",
+          "checks": ["minitest", "vitest", "browser-smoke"],
+          "invariants": ["成功時にチケットと依存関係を保存する", "失敗時は全件をロールバックし、画面にエラーを表示する"]
+        },
+        {
+          "id": "fullscreen-layering",
+          "checks": ["vitest", "browser-smoke"],
+          "invariants": ["全画面でもノード数を維持する", "モーダルとトーストを前面に表示する"]
+        }
+      ]
+    }
+  ]
+}

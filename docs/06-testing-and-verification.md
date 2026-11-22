@@ -41,6 +41,28 @@
 * **単体テスト（Vitest）**: `npm test`（`vitest run`）
 * **型チェック＆本番バンドルビルド**: `npm run build`（`tsc -b && vite build` → `../assets/javascripts/task_flow.js` および `../assets/stylesheets/task_flow.css` へ出力）
 
+### 1.4 統合検証
+
+プラグインルートで `node verification/verify-cli.mjs` を実行する。`npm --prefix frontend run --silent verify:all` でも同じ検証が実行される。Node.js・Ruby とインストール済みのフロントエンド依存を用意する。
+
+- 全体検証は、機能マップ、境界・仕様対応・テスト品質のチェックとその回帰テスト、TypeScript、Vitest、一時ディレクトリへの Vite ビルド、Docker 上の Minitest、Playwright の順に実行する。Minitest には 1.2 の専用 test DB が必要。
+- ブラウザースモークには既存の Playwright と Chromium を使う。Playwright を通常のモジュール検索で読み込めない場合は `TASK_FLOW_PLAYWRIGHT_MODULE` にモジュールディレクトリの絶対パスを設定する。インストール済みの Chrome を使用する場合は `TASK_FLOW_BROWSER_CHANNEL=chrome` を指定する。接続先は `TASK_FLOW_REDMINE_URL` で指定でき、既定値は `http://localhost:3000`。
+- スモークは [既存のシナリオ](fullscreen-layering/browser-check.js) を呼び出し、Redmine のログイン画面で一時ビルドした JS/CSS と模擬 API を使って全画面、ノード追加、モーダル、エラー表示を確認する。認証後の権限、実 DB への保存、D&D、下書き復元は §4 の実環境シナリオに従って確認する。
+- `node verification/verify-cli.mjs --local` は機能マップ、静的チェックとその回帰テスト、TypeScript、Vitest、Vite を実行する。Docker・ブラウザーを用意できない場合や GitHub Actions で使う。
+- 標準出力は `status`、`scope`、各チェックの `durationMs` と成否、`metrics`、スクリーンショットの `artifacts` を含む JSON。全体検証では Chrome 起動を含むブラウザースモークの所要時間を `metrics.browserSmokeDurationMs` に出力する。機能マップで定めた上限（60 秒）を超えるか、選んだ範囲のチェックが失敗した場合は終了コード 1 を返す。実行ログは標準エラー出力に出す。[機能とチェックの対応](../verification/feature-map.json)
+
+### 1.5 境界チェックと Ratchet Mode
+
+`node verification/check-architecture.mjs` は既存の TypeScript 7 の AST と Ruby 標準の Ripper を使う。TypeScript は `tsconfig.json` の対象に含まれる `frontend/src/` と `frontend/tests/`、Ruby は `app/`、`config/`、`test/` 配下の `.rb` と `init.rb` を検査する。モジュール境界は TypeScript の相対パス、Vite の `/src/` パス、Ruby の明示的な機能定数参照と読み込みを対象とする。動的な Ruby 定数参照や別名による間接参照はコードレビューで確認する。
+
+テストは機能の公開入口を使う。静的チェックは抑止コメント、製品モジュールへの直接の `vi.mock`／`vi.doMock` や Ruby の `TaskFlow` 定数への `stub`、曖昧なアサーション、スパイだけのアサーション、1 ケースあたり 5 検証・40 行の上限を検査する。テストデータの用意や外部 I/O の差し替えにはブラウザー API や Rails の fixture を使える。期待値や実装を写したテスト、間接的なモックはレビューで確認する。[テスト品質ルール](../agents/rules/testing-anti-patterns.md)
+
+新規機能の各ディレクトリに公開入口を置き、`docs/<feature>/SPEC.md` に ``- 正常系 `TEST-ID` 条件`` と、該当する `境界値` または `失敗系` の行を記載する。Ruby の機能名のアンダースコアは仕様書のパスではハイフンに変換する。静的チェックは各 ID で始まる Vitest のテスト名または Rails の `test '...'` が登録されていることを確認する。受け入れ条件を実際に検証しているかはレビューで確認する。[記載例](../verification/_reference-example/README.md#公開契約とテスト)
+
+ベースラインはファイルパス、ルール、対象、前後の空白を除いたソース行と、その重複数を照合する。ケース単位の違反にはケースの内容の SHA-256 も記録する。行番号の移動は許容し、ケース内を変更して同じ違反が残ると失敗する。違反が増えるか、解消済みの例外が残ると失敗する。例外を解消した PR では `node verification/check-architecture.mjs --print-baseline` で現在の候補を確認し、対応する行を [既存例外一覧](../verification/architecture-baseline.json) から削除する。
+
+GitHub Actions の PR 検証では、ベースブランチの例外一覧が存在する場合に件数と内容を比較し、例外の追加を失敗として扱う。Actions の検証と CODEOWNERS レビューをマージ条件にする場合は、対象ブランチのルールセットで `verify-local` とコードオーナーの承認を必須にする。
+
 ---
 
 ## 2. バックエンドテスト仕様（Minitest: `test/`）
@@ -80,7 +102,7 @@
 
 ## 3. フロントエンド単体テスト仕様（Vitest: `frontend/tests/`）
 
-現在 10 ファイル（計 45 テスト）が存在する：
+現在 11 ファイル（計 53 テスト）が存在する。
 
 | ファイル | 対象モジュール | テスト数 | 主な検証範囲 |
 | :--- | :--- | :--- | :--- |
@@ -90,14 +112,15 @@
 | `persistence.test.ts` | `domain/persistence.ts` | 4 | `QuotaExceededError` 捕捉、JSON インポート時の無効 ID フォールバックと警告収集、保存名バリデーション（空白・50文字上限）、名前付き保存データの正規化・破損 JSON 耐性・5件上限 |
 | `savedFlows.test.tsx` | `components/SavedFlowsModal.tsx`, `store/useFlowStore.ts`, `App.tsx` | 5 | 5件までの新規保存・再初期化後保持・6件目上限エラー・削除後再保存、読込（Undo 連携・自動下書き同期・`isSubmitted` 時操作・無効 ID フォールバック）、上書き保存、`QuotaExceededError` 耐性、全画面モーダル重なり順と `Esc` 抑止 |
 | `client.test.ts` | `api/client.ts` | 1 | `X-CSRF-Token`・`X-Requested-With` 付与、HTML リダイレクト応答時の `SessionExpiredError` 検知 |
-| `inspectorPanel.test.tsx` | `components/InspectorPanel.tsx` | 6 | 折りたたみ/展開、ノード追加・ダブルクリック時の自動展開とフォーカス、送信済み/エラー時操作、クリック伝播抑止 |
+| `inspectorPanel.test.tsx` | `components/InspectorPanel.tsx` | 8 | 折りたたみ/展開、ノード追加・ダブルクリック時の自動展開とフォーカス、送信済み/エラー時操作、クリック伝播抑止 |
 | `fullscreenToggle.test.tsx` | `App.tsx`, `components/ActionBars.tsx` | 6 | `aria-label` / `aria-pressed` による全画面 ON/OFF、`Esc` 解除、入力要素・モーダル表示中の `Esc` 抑止、状態保持、`isSubmitted` 時操作可 |
 | `actionBars.test.tsx` | `components/ActionBars.tsx` | 5 | 全アイコンボタン（`保存・読込` 含む）の `aria-label` と下向きツールチップ（`top-full mt-2`）、件数バッジ、無効化境界条件、`isSubmitting` / `isSubmitted` / リセット表示、各クリックハンドラ |
 | `cursorStyles.test.ts` | `index.css` | 2 | `.task-flow-root` スコープ内のカスタム grab/grabbing カーソル定義 |
+| `resultModal.test.tsx` | `components/ResultModal.tsx` | 6 | エクスポート JSON とスキーマの切替、コピー成功・失敗、閉じて再表示したときの初期状態 |
 
 ### 3.1 単体テストの未カバー領域
 
-`FlowCanvas.tsx`、`TaskNode.tsx`、`GroupNode.tsx`、`DependencyEdge.tsx`、`ResultModal.tsx` の実 DOM 描画、ホバー時ツールチップの視覚的クリップ有無、React Flow 上のドラッグ＆ドロップ操作、Redmine CSS との非干渉、および実サーバーとの通信は Vitest の対象外であり、次の実ブラウザ検証で担保する。
+ブラウザー上のレイアウトや重なり順、ホバー時のツールチップ、React Flow 上のドラッグ＆ドロップ操作、Redmine CSS との非干渉、および実サーバーとの通信は、次の実ブラウザー検証で確認する。
 
 ---
 

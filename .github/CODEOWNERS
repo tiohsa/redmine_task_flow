@@ -1,0 +1,10 @@
+/.github/CODEOWNERS @tiohsa
+/AGENTS.md @tiohsa
+/agents/rules/ @tiohsa
+/verification/ @tiohsa
+/frontend/package.json @tiohsa
+/frontend/package-lock.json @tiohsa
+/frontend/tsconfig.json @tiohsa
+/frontend/vite.config.ts @tiohsa
+/docs/fullscreen-layering/browser-check.js @tiohsa
+/.github/workflows/verification.yml @tiohsa
