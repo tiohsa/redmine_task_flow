@@ -263,4 +263,22 @@ class TaskFlowBulkCreatorTest < ActiveSupport::TestCase
     ).call
     refute limit_rels_result[:ok]
   end
+
+  test 'BNE-11 rolls back previously saved issues and relations when a relation fails' do
+    issues = [base_issue('parent'), base_issue('other'), base_issue('child', parent_temp_id: 'parent')]
+    relations = [
+      { source_temp_id: 'parent', target_temp_id: 'other', relation_type: 'precedes', delay: 0 },
+      { source_temp_id: 'parent', target_temp_id: 'child', relation_type: 'precedes', delay: 0 }
+    ]
+    result = nil
+    assert_no_difference ['Issue.count', 'IssueRelation.count'] do
+      result = TaskFlow::BulkCreator.new(project: @project, user: @user, issues: issues, relations: relations).call
+    end
+    assert_equal false, result[:ok]
+    assert_includes result[:errors].first[:messages],
+                    I18n.t('activerecord.errors.messages.cant_link_an_issue_with_a_descendant')
+    retry_result = TaskFlow::BulkCreator.new(project: @project, user: @user, issues: issues, relations: relations.take(1)).call
+    assert_equal true, retry_result[:ok]
+    assert_equal [3, 1], [retry_result[:issues].size, retry_result[:relations].size]
+  end
 end

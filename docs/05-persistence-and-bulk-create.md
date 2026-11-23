@@ -10,6 +10,7 @@
 * **保存データ形式（`SerializedFlowData`）**:
   * `{ schema_version: 1, baseDate: string, nodes: TaskFlowNode[], edges: TaskFlowEdge[] }`
 * **保存タイミング**: `persistDraftIfReady(state)` により、ノード／エッジ追加・削除・移動・属性変更・基準日変更・レイアウト・Undo/Redo・JSONインポート・保存データ読込等の状態変更時に自動保存する。ただし `!state.bootstrap` または `state.isSubmitted === true` の場合は保存しない。
+* ノード属性の一括変更では、適用後の v1 下書きを先に 1 回保存し、成功後にノードと Undo 履歴を更新する。保存に失敗した場合は編集画面に理由を表示し、現在のノードと履歴を保持する。[一括変更仕様](bulk-node-edit/SPEC.md)
 * **例外保護**: `saveDraftToStorage` / `loadDraftFromStorage` / `clearDraftFromStorage` は `try/catch` で保護し、`QuotaExceededError` 等が発生してもアプリをクラッシュさせない。
 * **クリアタイミング**: `bulk_create` 成功時、`resetFlow()` 実行時、`resetToSample()` 実行時に `clearDraftFromStorage` を呼び出す。
 
@@ -61,7 +62,7 @@
 
 * `requestJson` はすべてのリクエストに `Accept: application/json`、`X-Requested-With: XMLHttpRequest`、`credentials: 'same-origin'` を付与する。
 * `GET` / `HEAD` 以外では `meta[name="csrf-token"]` から取得した `X-CSRF-Token` と `Content-Type: application/json` を付与する。
-* `response.redirected === true` または `Content-Type` に `application/json` が含まれない場合は `SessionExpiredError` を送出する。
+* リダイレクト応答は `SessionExpiredError` とする。一括登録へのリダイレクトを伴わない `403` は、HTML 応答も含めて `ApiError` とする。JSON の `error` があればその文言を使い、取得できなければ「一括登録の権限がありません」を使う。その他の非 JSON 応答は `SessionExpiredError` とする。
 * `postBulkCreate` はステータス `200` / `201` で `{ ok: true, data }`、`422` で `{ ok: false, status: 422, data }` を返し、それ以外（`403` 等）は `ApiError` を送出する。
 
 ---
@@ -105,7 +106,7 @@ DB 操作前に以下を検証し、1 件でもエラーがあれば DB に触�
 2. `Issue.transaction` 内で各ノードを `Issue.new(project: @project, author: @user)` として生成し、`build_safe_attributes` の結果を `issue.send(:safe_attributes=, attrs, @user)` 経由で代入・保存する。
    * `is_group` が truthy（`true`, `'true'`, `1`, `'1'`）の場合、`start_date` / `due_date` / `estimated_hours` を明示的に `nil` とし、Redmine 標準の親子ロールアップと競合しないようにする。
    * `parent_temp_id` が指定されており、親の作成が成功している場合のみ `parent_issue_id` を設定する。
-3. チケット保存エラーが 0 件の場合のみ `IssueRelation`（`relation_type: 'precedes'`, `delay: rel_item[:delay].nil? ? 0 : rel_item[:delay].to_i`）を作成する。
+3. チケット保存エラーが 0 件の場合のみ `IssueRelation`（`relation_type: 'precedes'`, `delay: rel_item[:delay].nil? ? 0 : rel_item[:delay].to_i`）を作成する。両端を保存済みチケットの ID で指定し、親子保存後のチケットツリーで関連を検証する。
 4. チケットまたは関連の保存で 1 件でもエラーがあれば `raise ActiveRecord::Rollback` で全件ロールバックする。
 5. 成功時は `created_issues.each_value(&:reload)` で Redmine コアの `soonest_start`（非稼働日スキップ）および親子ロールアップ後の確定値を再取得し、元の `@issues` 入力順で `{ temp_id, id, start_date (iso8601), due_date (iso8601) }` と `relations`（`{ id, source_temp_id, target_temp_id }`）を返却する。
 
@@ -117,7 +118,9 @@ DB 操作前に以下を検証し、1 件でもエラーがあれば DB に触�
   * 各ノードに `createdIssueId`, `startDate`, `dueDate` を同期反映し、`createdIssuesMap` を更新、`isSubmitted: true`、`resultModalOpen: true`、`resultModalMode: 'success'` とする。
   * モーダルには `#id`（`/issues/:id` への `target="_blank"` リンク）、題名、確定日程（`startDate 〜 dueDate`）の一覧テーブルを表示する。
 * **バリデーション失敗時 (`422 Unprocessable Entity`)**:
-  * `temp_id` ありのエラーを `validationErrors[temp_id]`、`temp_id: null` のエラーを `submitErrorMessages` へ格納し、`resultModalMode: 'error'` でロールバック通知とエラー詳細を表示する。最初のエラー `temp_id` を選択状態にする。
+  * `temp_id` ありのエラーを `validationErrors[temp_id]`、`temp_id: null` のエラーを `submitErrorMessages` へ格納する。同じ `temp_id` の複数のエラーはレスポンス順に追記する。`resultModalMode: 'error'` でロールバック通知と全詳細を表示し、最初のエラー `temp_id` を選択状態にする。
+* **権限不足時 (`403 Forbidden`)**:
+  * 権限エラーをトーストで表示して送信中状態を解除する。編集内容と自動下書きを保持し、送信済み状態へ移行しない。
 * **通信エラー／セッション切れ**:
   * `SessionExpiredError` または通信エラーメッセージをトースト通知で表示し、`isSubmitting: false` に戻す。
 

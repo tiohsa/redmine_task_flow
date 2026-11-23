@@ -105,6 +105,29 @@ class TaskFlowsTest < Redmine::IntegrationTest
     end
   end
 
+  %i[create_issues_via_flow add_issues manage_issue_relations].each do |permission|
+    test "BNE-09 denies access and hides the menu without #{permission}" do
+      log_user('jsmith', 'jsmith')
+      @role.remove_permission!(permission)
+      get "/projects/#{@project.identifier}"
+      assert_select 'a.task-flow', count: 0
+      get "/projects/#{@project.identifier}/task_flow"
+      assert_response :forbidden
+    end
+
+    test "BNE-09 refuses a valid submission when #{permission} is revoked after opening" do
+      log_user('jsmith', 'jsmith')
+      get "/projects/#{@project.identifier}/task_flow"
+      assert_response :success
+      @role.remove_permission!(permission)
+      assert_no_difference ['Issue.count', 'IssueRelation.count'] do
+        post "/projects/#{@project.identifier}/task_flow/bulk_create.json",
+             params: bulk_permission_payload, as: :json
+      end
+      assert_response :forbidden
+    end
+  end
+
   def test_it_be_04_bulk_create_success_and_validation_error_contracts
     log_user('jsmith', 'jsmith')
     tracker = @project.trackers.first
@@ -189,5 +212,17 @@ class TaskFlowsTest < Redmine::IntegrationTest
     err_json = JSON.parse(response.body)
     assert_equal 'bad_1', err_json.dig('errors', 0, 'temp_id')
     assert err_json.dig('errors', 0, 'messages').any?
+  end
+
+  private
+
+  def bulk_permission_payload
+    tracker = @project.trackers.first
+    issues = %w[first second].map do |id|
+      { temp_id: id, subject: "Bulk edit #{id}", tracker_id: tracker.id,
+        status_id: tracker.default_status_id, priority_id: IssuePriority.active.first.id }
+    end
+    { issues: issues, relations: [{ source_temp_id: 'first', target_temp_id: 'second',
+                                    relation_type: 'precedes', delay: 0 }] }
   end
 end

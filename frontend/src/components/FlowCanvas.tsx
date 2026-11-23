@@ -26,6 +26,8 @@ import { isEditableElement } from '../domain/dom';
 interface FlowCanvasProps {
   onOpenJsonExport: (jsonText: string) => void;
   onOpenSavedFlows?: () => void;
+  onOpenBulkNodeEdit?: () => void;
+  bulkNodeEditOpen?: boolean;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
 }
@@ -33,6 +35,8 @@ interface FlowCanvasProps {
 export const FlowCanvas: React.FC<FlowCanvasProps> = ({
   onOpenJsonExport,
   onOpenSavedFlows,
+  onOpenBulkNodeEdit,
+  bulkNodeEditOpen = false,
   isFullscreen = false,
   onToggleFullscreen,
 }) => {
@@ -176,6 +180,7 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
   // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (bulkNodeEditOpen) return;
       const isMod = e.ctrlKey || e.metaKey;
 
       if (isMod && e.key.toLowerCase() === 'z') {
@@ -190,6 +195,12 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
       }
 
       if (isEditableElement(e.target)) return;
+      if (e.key === 'Tab' && e.shiftKey) return;
+      if (
+        (e.key === 'Enter' || e.key === 'Tab') &&
+        e.target instanceof Element &&
+        e.target.closest('button, a[href]')
+      ) return;
 
       if (e.key === 'Tab' && selectedNodeId && !isSubmitted) {
         const selected = nodes.find((n) => n.id === selectedNodeId);
@@ -222,6 +233,7 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
+    bulkNodeEditOpen,
     nodes,
     selectedNodeId,
     selectedEdgeId,
@@ -238,6 +250,7 @@ export const FlowCanvas: React.FC<FlowCanvasProps> = ({
       <ActionBars
         onOpenJsonExport={onOpenJsonExport}
         onOpenSavedFlows={onOpenSavedFlows}
+        onOpenBulkNodeEdit={onOpenBulkNodeEdit}
         isFullscreen={isFullscreen}
         onToggleFullscreen={onToggleFullscreen}
       />

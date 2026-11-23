@@ -38,6 +38,7 @@
 |---|---|---|
 | `フロー基準日` (`<input type="date">` + カレンダーアイコン) | `setBaseDate(e.target.value)` | `isSubmitted` 時は無効化。下向きツールチップ「フロー基準日」 |
 | `保存・読込` | `onOpenSavedFlows()` | `SavedFlowsModal` を開閉し、名前付きフロー保存（最大 5 件）・読込・上書き・削除を実行。`isSubmitted` 時も常時操作可 |
+| `属性を一括変更` | `onOpenBulkNodeEdit()` | 編集可能でノードが 2 件以上ある場合に対象と属性を指定するダイアログを開く。[一括変更仕様](bulk-node-edit/SPEC.md) |
 | `JSON出力` | `onOpenJsonExport(exportJson())` | 常時操作可 |
 | `JSON読込` | `importJson(reader.result)` | `.json,application/json` ファイル選択 |
 | `サンプル初期化` | `resetToSample()` | 確認なしでサンプルフローへ再初期化 |
@@ -49,14 +50,16 @@
 
 `window` の `keydown` イベントで処理する。`input` / `textarea` / `select` / `isContentEditable` 要素にフォーカス中（`isEditableElement(e.target)`）は、ブラウザ標準の入力・編集を優先してすべてのショートカットをスキップする。
 
+一括変更ダイアログを開いている間はキャンバスのショートカットを停止する。ダイアログを閉じると起動ボタンにフォーカスが戻る。ボタンやリンクの Tab / Enter と、Shift+Tab は標準の動作を使う。
+
 | キー | 条件 | 動作 |
 |---|---|---|
 | `Ctrl+Z` / `Cmd+Z` | 入力要素外 | `undo()` |
 | `Ctrl+Shift+Z` / `Cmd+Shift+Z` | 入力要素外 | `redo()` |
-| `Tab` | `!isSubmitted` かつ `taskNode` 選択中 | `addTaskNode({ sourceNodeId: selected.id })`（右隣に後続タスクを追加しエッジ接続） |
+| `Tab` | `!isSubmitted` かつ `taskNode` 選択中 | `addTaskNode({ sourceNodeId: selected.id })`（右隣に後続タスクを追加しエッジ接続）。Shift+Tab ではフォーカスを戻す |
 | `Enter` | `!isSubmitted` かつ `taskNode` 選択中 | `addTaskNode({ siblingOfNodeId: selected.id })`（下に並列タスクを追加し全先行エッジを複製） |
 | `Delete` / `Backspace` | `!isSubmitted` かつノードまたはエッジ選択中 | `deleteSelected()` |
-| `Escape` | `isFullscreen === true` かつ入力要素外かつモーダル（`ResultModal` / `SavedFlowsModal` / JSON出力モーダル）非表示時 | 全画面表示を解除（`App.tsx` で処理）。モーダル表示中の `Escape` はモーダルのみを閉じ、全画面状態を維持する |
+| `Escape` | `isFullscreen === true` かつ入力要素外かつモーダル非表示時 | 全画面表示を解除（`App.tsx` で処理）。一括変更ダイアログなどのモーダル表示中はモーダルのみを閉じ、全画面状態を維持する |
 
 ## 4. Undo / Redo 履歴仕様 (`useFlowStore.ts`, `FlowCanvas.tsx`)
 

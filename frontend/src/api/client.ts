@@ -39,6 +39,7 @@ function isJsonResponse(response: Response): boolean {
 async function requestJson<T>(
   url: string,
   options: RequestInit = {},
+  forbiddenMessage?: string,
 ): Promise<{ status: number; data: T }> {
   const headers = new Headers(options.headers);
   headers.set('Accept', 'application/json');
@@ -61,7 +62,16 @@ async function requestJson<T>(
     headers,
   });
 
-  if (response.redirected || !isJsonResponse(response)) {
+  if (response.redirected) {
+    throw new SessionExpiredError();
+  }
+  if (forbiddenMessage && response.status === 403) {
+    const data = isJsonResponse(response)
+      ? await response.json().catch(() => null) as { error?: string } | null
+      : null;
+    throw new ApiError(403, data?.error || forbiddenMessage, data);
+  }
+  if (!isJsonResponse(response)) {
     throw new SessionExpiredError();
   }
 
@@ -98,7 +108,7 @@ export async function postBulkCreate(
   >(url, {
     method: 'POST',
     body: JSON.stringify(payload),
-  });
+  }, '一括登録の権限がありません');
 
   if (status === 200 || status === 201) {
     return { ok: true, data: data as BulkCreateSuccessResponse };

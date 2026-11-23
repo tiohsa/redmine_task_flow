@@ -38,9 +38,11 @@
   color: inherit;
 }
 
-.task-flow-root button {
+.task-flow-root button,
+.task-flow-root button[type='submit'] {
   cursor: pointer;
   background-color: transparent;
+  block-size: auto;
 }
 
 .task-flow-root {
@@ -101,4 +103,29 @@
 
 .task-flow-root ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.task-flow-root .task-flow-bulk-edit-dialog {
+  box-sizing: border-box;
+  width: min(42rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  margin: auto;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgb(226 232 240 / 0.9);
+  border-radius: 1rem;
+  background: white;
+  color: #1e293b;
+  box-shadow: 0 20px 50px -12px rgb(15 23 42 / 0.18);
+}
+
+.task-flow-root .task-flow-bulk-edit-dialog:modal {
+  overscroll-behavior: contain;
+}
+
+.task-flow-root .task-flow-bulk-edit-dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgb(15 23 42 / 0.35);
+  backdrop-filter: blur(2px);
 }

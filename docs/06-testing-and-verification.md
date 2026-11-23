@@ -101,6 +101,7 @@ GitHub Actions の PR 検証では、ベースブランチの例外一覧が存�
 | `test_ut_be_03_disabled_core_fields_ignored_via_safe_attributes` | `disabled_core_fields` に含まれる `fixed_version_id` が `safe_attributes=` によりエラーなく無視（`nil`）されることを検証。 |
 | `test_ut_be_04_rollback_all_on_partial_validation_failure` | 3件中3件目のみ必須カスタムフィールド欠如時、全件ロールバック（`Issue.count` / `IssueRelation.count` 増加 0）および対象 `temp_id` のエラー返却を検証。 |
 | `test_ut_be_05_pre_transaction_structural_and_limit_rejections` | 循環依存（`A→B→A`）、グループ端点エッジ、グループネスト、重複エッジ・自己ループ、存在しない `temp_id`、件数上限超過（`issues: 101`, `relations: 201`）の事前拒否を検証。 |
+| `BNE-11` | 関連の保存途中で失敗した場合に、先に保存したチケットと関連もすべてロールバックされることを検証。 |
 
 ### 2.4 コントローラ結合テスト（`test/integration/task_flows_test.rb`）
 
@@ -112,12 +113,11 @@ GitHub Actions の PR 検証では、ベースブランチの例外一覧が存�
 | `test_it_be_02_permission_checks_module_disabled_and_404` | フル権限時は `200`＋メニュー表示。`:create_issues_via_flow`, `:add_issues`, `:manage_issue_relations` の各欠如時およびモジュール無効時は HTML/JSON とも `403`・メニュー非表示。存在しないプロジェクトは `404`。 |
 | `test_it_be_03_csrf_protection_and_no_api_key_exposure` | `index` HTML に `@user.api_key` が含まれないこと、および `allow_forgery_protection = true` 時に CSRF トークンなしの `bulk_create.json` POST が `403` または `422` で拒否されることを検証。 |
 | `test_it_be_04_bulk_create_success_and_validation_error_contracts` | 正常ペイロードで `201 Created`（`Issue` 2件・`IssueRelation` 1件作成）、空題名ペイロードで `422 Unprocessable Entity`（作成 0 件・`errors` 契約）を検証。 |
+| `BNE-09` | 3 権限を個別に欠く場合のメニュー非表示と直接アクセス拒否、および編集画面を開いた後に権限を取り消した場合の `403` と作成 0 件を検証。 |
 
 ---
 
 ## 3. フロントエンド単体テスト仕様（Vitest: `frontend/tests/`）
-
-現在 11 ファイル（計 53 テスト）が存在する。
 
 | ファイル | 対象モジュール | テスト数 | 主な検証範囲 |
 | :--- | :--- | :--- | :--- |
@@ -133,6 +133,8 @@ GitHub Actions の PR 検証では、ベースブランチの例外一覧が存�
 | `cursorStyles.test.ts` | `index.css` | 2 | `.task-flow-root` スコープ内のカスタム grab/grabbing カーソル定義 |
 | `resultModal.test.tsx` | `components/ResultModal.tsx` | 6 | エクスポート JSON とスキーマの切替、コピー成功・失敗、閉じて再表示したときの初期状態 |
 
+ノード属性の一括変更は `bulkNodeEdit*.test.ts` と `bulkNodeEditDialog.test.tsx` で検証する。公開入口ごとに、候補・対象の検証、ダイアログ操作、適用と保存失敗、履歴・下書き復元、起票前検証、403 と 422 の失敗表示・再試行を確認する。[テスト ID と受け入れ条件](bulk-node-edit/SPEC.md#6-required-tests)
+
 ### 3.1 単体テストの未カバー領域
 
 ブラウザー上のレイアウトや重なり順、ホバー時のツールチップ、React Flow 上のドラッグ＆ドロップ操作、Redmine CSS との非干渉、および実サーバーとの通信は、次の実ブラウザー検証で確認する。
@@ -147,7 +149,7 @@ JS / CSS / ERB / バックエンド変更時は、§1.2 の評価用 Redmine（`
    * 対象プロジェクトで `task_flow` モジュール有効化・3 権限付与時に「タスクフロー」タブが表示され、2 ペイン UI が Redmine ヘッダ／スタイルと干渉せず描画されること。
    * 左右ツールバーがアイコンボタン＋区切り線＋件数バッジで描画され、各アイコンへのホバー・フォーカス時に下向きツールチップ（`top-full mt-2`）がキャンバス上端で切れずに表示されること。
 2. **キーボード操作によるフロー構築と分岐・合流**:
-   * 「タスク追加」後、`Tab` で後続追加＋自動接続＋属性継承、`Enter` で並列ノード追加＋全先行タスクからの分岐接続、`Delete` で削除、`Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` で Undo/Redo できること。
+   * 「タスク追加」後、追加したノードにフォーカスして `Tab` で後続追加＋自動接続＋属性継承、`Enter` で並列ノード追加＋全先行タスクからの分岐接続ができること。`Delete` で削除し、`Ctrl/Cmd+Z` / `Ctrl/Cmd+Shift+Z` で Undo/Redo できること。
 3. **不正接続ブロック**:
    * 下流から上流への循環接続や親グループ枠への接続が拒否され、警告トーストが表示されること。
 4. **親グループ枠の D&D 紐付けと枠削除**:
@@ -168,3 +170,7 @@ JS / CSS / ERB / バックエンド変更時は、§1.2 の評価用 Redmine（`
    * 「保存・読込」ボタンから `SavedFlowsModal` を開き、名前を付けて 5 件まで新規保存できること。6 件目の新規保存が上限エラーでブロックされること。
    * ページリロード後も 5 件の保存データが保持されること。
    * 保存一覧から「上書き保存」「削除」が動作し、削除後に再度新規保存できること。「読込」でキャンバスが切り替わり、自動下書きにも反映され、`Undo` で読込前へ戻せること。全画面表示中にモーダルを開き、`Esc` でモーダルのみ閉じて全画面が維持されること。
+
+10. **ノードのチケット属性を一括変更**
+    * キーボードで対象と値を指定し、タスクと親グループ枠だけに適用する。選択範囲、100 件の境界、件数と項目のエラーが重なった場合の表示と全件拒否、Undo/Redo、下書き復元を確認する。
+    * 必須項目による登録停止と補完後の起票、編集開始後に権限が取り消された際の表示と下書き保持、同一ノードに複数の 422 詳細がある場合の表示と修正後の再試行を確認する。[一括変更の検証手順](bulk-node-edit/quickstart.md)

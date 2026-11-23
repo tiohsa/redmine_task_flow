@@ -10,6 +10,7 @@
         "root": "#redmine-task-flow-root",
         "editor": "[data-testid=\"task-flow-editor-container\"]",
         "addTask": "button[aria-label=\"タスク追加\"]",
+        "bulkNodeEdit": "button[aria-label=\"属性を一括変更\"]",
         "fullscreen": "button[aria-label=\"全画面表示\"]"
       },
       "flows": [
@@ -24,9 +25,23 @@
           "invariants": ["循環依存を拒否する", "保存済みフローと下書きを復元できる"]
         },
         {
+          "id": "bulk-node-edit",
+          "checks": ["vitest", "minitest", "verification/start-e2e.sh", "docs/bulk-node-edit/quickstart.md"],
+          "invariants": [
+            "選択した 2〜100 件のタスク・親グループ枠の指定属性に反映し、下書きと履歴を 1 回分更新する",
+            "トラッカー変更時は各ノードのステータスを維持し、維持できないノードを示して全件の適用を拒否する",
+            "件数違反と重なっても対象・項目別の理由を表示し、検証または下書き保存に失敗した場合はノードと履歴を保持する",
+            "Undo/Redo は一括変更全体に作用し、再読み込みで自動下書きを復元する"
+          ]
+        },
+        {
           "id": "bulk-create",
           "checks": ["minitest", "vitest", "browser-smoke"],
-          "invariants": ["成功時にチケットと依存関係を保存する", "失敗時は全件をロールバックし、画面にエラーを表示する"]
+          "invariants": [
+            "成功時に親子関係と依存関係を含めてチケットを保存する",
+            "保存失敗時は全件をロールバックし、同一ノードに対する複数の 422 詳細を表示する",
+            "403 では権限不足を表示し、追加作成は 0 件で、編集内容と下書きを保持する"
+          ]
         },
         {
           "id": "docker-e2e-database",

@@ -4,6 +4,7 @@ import { useFlowStore } from '../store/useFlowStore';
 interface ActionBarsProps {
   onOpenJsonExport: (jsonText: string) => void;
   onOpenSavedFlows?: () => void;
+  onOpenBulkNodeEdit?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
 }
@@ -41,6 +42,7 @@ const ToolbarDivider: React.FC = () => (
 export const ActionBars: React.FC<ActionBarsProps> = ({
   onOpenJsonExport,
   onOpenSavedFlows,
+  onOpenBulkNodeEdit,
   isFullscreen = false,
   onToggleFullscreen,
 }) => {
@@ -52,6 +54,7 @@ export const ActionBars: React.FC<ActionBarsProps> = ({
   const future = useFlowStore((s) => s.future);
   const isSubmitted = useFlowStore((s) => s.isSubmitted);
   const isSubmitting = useFlowStore((s) => s.isSubmitting);
+  const hasBootstrap = useFlowStore((s) => s.bootstrap !== null);
 
   const addTaskNode = useFlowStore((s) => s.addTaskNode);
   const addGroupNode = useFlowStore((s) => s.addGroupNode);
@@ -283,6 +286,33 @@ export const ActionBars: React.FC<ActionBarsProps> = ({
 
         <ToolbarDivider />
 
+        {onOpenBulkNodeEdit && (
+          <TooltipWrapper label="属性を一括変更">
+            <button
+              type="button"
+              aria-label="属性を一括変更"
+              aria-haspopup="dialog"
+              disabled={!hasBootstrap || nodes.length < 2 || isSubmitting || isSubmitted}
+              onClick={onOpenBulkNodeEdit}
+              className="w-10 h-10 rounded-xl bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-600 border border-slate-200/80 flex items-center justify-center transition active:scale-95"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M9 6h11M9 12h7M9 18h4" />
+                <path d="M4 6l1 1 2-2M4 12l1 1 2-2" />
+                <path d="M16.5 14.5l3 3L15 22h-3v-3l4.5-4.5z" />
+              </svg>
+            </button>
+          </TooltipWrapper>
+        )}
         <TooltipWrapper label="保存・読込">
           <button
             type="button"

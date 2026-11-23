@@ -52,8 +52,9 @@ module TaskFlow
             next if failed_temp_ids.include?(source_id) || failed_temp_ids.include?(target_id)
 
             relation = IssueRelation.new(
-              issue_from: created_issues[source_id],
-              issue_to: created_issues[target_id],
+              # Parent and child saves can move the endpoints in the issue tree.
+              issue_from_id: created_issues.fetch(source_id).id,
+              issue_to_id: created_issues.fetch(target_id).id,
               relation_type: 'precedes',
               delay: rel_item[:delay].nil? ? 0 : rel_item[:delay].to_i
             )

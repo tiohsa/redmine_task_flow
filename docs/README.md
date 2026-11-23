@@ -28,7 +28,7 @@
 | [04-inspector-and-validation.md](04-inspector-and-validation.md) | インスペクタ・検証 | 折りたたみ・フォーカス制御、トラッカー別コアフィールド無効化、カスタムフィールド描画、クライアント側送信前バリデーション |
 | [05-persistence-and-bulk-create.md](05-persistence-and-bulk-create.md) | 永続化・一括登録 | `localStorage` 下書き自動保存・名前付きフロー保存（最大 5 件）、JSON エクスポート/インポート（ID フォールバック）、`bulk_create` API、結果モーダル、I18n |
 | [06-testing-and-verification.md](06-testing-and-verification.md) | テスト・検証 | Backend Minitest、Frontend Vitest、Docker 開発/テスト環境手順、実ブラウザ E2E 検証シナリオ |
-| [ノード属性の一括変更](bulk-node-edit/SPEC.md) | レビュー用ドラフト | 対象選択、項目指定、トラッカー連動、適用・取消、履歴と検証 |
+| [ノード属性の一括変更](bulk-node-edit/SPEC.md) | タスク・親グループ枠の一括編集 | 対象選択、4 属性の指定、トラッカー連動、適用・取消、履歴と検証 |
 
 ## 3. 実装ファイル対応表
 
@@ -48,6 +48,7 @@
 - `types/flow.ts` — 型定義 (`BootstrapData`, `TaskFlowNode`, `TaskFlowEdge`, `BulkCreateRequestPayload` 等) → 全仕様書
 - `store/useFlowStore.ts` — Zustand ストア（状態・履歴・グラフ操作・送信制御） → `02`, `03`, `04`, `05`
 - `components/FlowCanvas.tsx`, `components/ActionBars.tsx` — キャンバス・ツールバー・ズーム・ショートカット → `02-canvas-and-nodes.md`
+- `components/BulkNodeEditDialog.tsx`, `features/bulk-node-edit/` — 一括変更ダイアログ・候補判定・適用検証 → [一括変更仕様](bulk-node-edit/SPEC.md)
 - `components/nodes/TaskNode.tsx`, `components/nodes/GroupNode.tsx` — ノード UI → `02-canvas-and-nodes.md`
 - `components/edges/DependencyEdge.tsx` — 依存エッジ UI → `03-dependencies-and-scheduling.md`
 - `domain/graphValidation.ts` — 接続・循環依存検証 → `03-dependencies-and-scheduling.md`

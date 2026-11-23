@@ -42,6 +42,11 @@ import {
 } from '../domain/persistence';
 import { generateId } from '../domain/uuid';
 import { postBulkCreate, SessionExpiredError } from '../api/client';
+import {
+  evaluateBulkNodeEdit,
+  type BulkNodeEditFailure,
+  type BulkNodeEditRequest,
+} from '../features/bulk-node-edit';
 
 const MAX_HISTORY = 50;
 
@@ -306,6 +311,7 @@ export interface FlowStoreState {
     patch: Partial<TaskNodeData>,
     options?: { recordHistory?: boolean },
   ) => void;
+  applyBulkNodeEdit: (request: BulkNodeEditRequest) => { ok: true } | BulkNodeEditFailure;
   updateEdgeDelay: (edgeId: string, delay: number) => void;
   setBaseDate: (date: string) => void;
   recalculateDates: () => void;
@@ -342,6 +348,11 @@ function getSavedFlowScope(state: FlowStoreState): {
     projectId: state.bootstrap?.project.id ?? 'default',
     userId: state.bootstrap?.current_user_id ?? 'default',
   };
+}
+
+function appendHistory(state: FlowStoreState, snapshot: FlowSnapshot = state) {
+  const { nodes, edges, baseDate } = snapshot;
+  return { past: [...state.past, { nodes, edges, baseDate }].slice(-MAX_HISTORY), future: [] };
 }
 
 function persistDraftIfReady(state: FlowStoreState): void {
@@ -581,15 +592,7 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
   },
 
   pushSnapshot: (snapshot) => {
-    set((state) => {
-      const snap: FlowSnapshot = snapshot ?? {
-        nodes: state.nodes,
-        edges: state.edges,
-        baseDate: state.baseDate,
-      };
-      const nextPast = [...state.past, snap].slice(-MAX_HISTORY);
-      return { past: nextPast, future: [] };
-    });
+    set((state) => appendHistory(state, snapshot));
   },
 
   onNodesChange: (changes) => {
@@ -1044,6 +1047,32 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
     persistDraftIfReady(get());
   },
 
+  applyBulkNodeEdit: (request) => {
+    const state = get();
+    const { bootstrap, edges, baseDate } = state;
+    if (!bootstrap || state.isSubmitting || state.isSubmitted) {
+      return { ok: false, issues: [{ message: '現在のフローは編集できません' }] };
+    }
+    const { result } = evaluateBulkNodeEdit(state.nodes, bootstrap, request);
+    if (!result.ok) return result;
+
+    const { nodes, changedNodeIds } = result;
+    const saved = saveDraftToStorage(bootstrap.project.id, bootstrap.current_user_id, {
+      schema_version: 1,
+      nodes,
+      edges,
+      baseDate,
+    });
+    if (!saved.ok) {
+      return { ok: false, issues: [{ message: saved.error ?? '下書きを保存できませんでした' }] };
+    }
+
+    const validationErrors = { ...state.validationErrors };
+    for (const id of changedNodeIds) delete validationErrors[id];
+    set({ ...appendHistory(state), nodes, validationErrors });
+    return { ok: true };
+  },
+
   updateEdgeDelay: (edgeId, delay) => {
     const state = get();
     if (state.isSubmitted) return;
@@ -1207,12 +1236,12 @@ export const useFlowStore = create<FlowStoreState>((set, get) => ({
           `${result.data.issues.length}件のチケットを一括登録しました`,
         );
       } else {
-        const serverErrors: Record<string, string[]> = {};
+        const serverErrors: Record<string, string[]> = Object.create(null);
         const globalMessages: string[] = [];
         let firstErrId: string | null = null;
         for (const err of result.data.errors) {
           if (err.temp_id) {
-            serverErrors[err.temp_id] = err.messages;
+            (serverErrors[err.temp_id] ??= []).push(...err.messages);
             if (!firstErrId) firstErrId = err.temp_id;
           } else {
             globalMessages.push(...err.messages);

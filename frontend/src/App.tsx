@@ -6,6 +6,7 @@ import { FlowCanvas } from './components/FlowCanvas';
 import { InspectorPanel } from './components/InspectorPanel';
 import { ResultModal, ToastContainer } from './components/ResultModal';
 import { SavedFlowsModal } from './components/SavedFlowsModal';
+import { BulkNodeEditDialog } from './components/BulkNodeEditDialog';
 import { isEditableElement } from './domain/dom';
 
 interface AppProps {
@@ -18,9 +19,11 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [exportJsonText, setExportJsonText] = useState<string | null>(null);
   const [savedFlowsModalOpen, setSavedFlowsModalOpen] = useState(false);
+  const [bulkNodeEditOpen, setBulkNodeEditOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const initialize = useFlowStore((s) => s.initialize);
+  const applyBulkNodeEdit = useFlowStore((s) => s.applyBulkNodeEdit);
   const resultModalOpen = useFlowStore((s) => s.resultModalOpen);
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (isEditableElement(e.target)) return;
-      if (exportJsonText !== null || resultModalOpen || savedFlowsModalOpen) {
+      if (exportJsonText !== null || resultModalOpen || savedFlowsModalOpen || bulkNodeEditOpen) {
         return;
       }
       e.preventDefault();
@@ -38,7 +41,7 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isFullscreen, exportJsonText, resultModalOpen, savedFlowsModalOpen]);
+  }, [isFullscreen, exportJsonText, resultModalOpen, savedFlowsModalOpen, bulkNodeEditOpen]);
 
   useEffect(() => {
     let active = true;
@@ -100,6 +103,8 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
           <FlowCanvas
             onOpenJsonExport={(txt) => setExportJsonText(txt)}
             onOpenSavedFlows={() => setSavedFlowsModalOpen(true)}
+            onOpenBulkNodeEdit={() => setBulkNodeEditOpen(true)}
+            bulkNodeEditOpen={bulkNodeEditOpen}
             isFullscreen={isFullscreen}
             onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
           />
@@ -115,6 +120,11 @@ export const App: React.FC<AppProps> = ({ bootstrapUrl, bulkCreateUrl }) => {
       <SavedFlowsModal
         isOpen={savedFlowsModalOpen}
         onClose={() => setSavedFlowsModalOpen(false)}
+      />
+      <BulkNodeEditDialog
+        isOpen={bulkNodeEditOpen}
+        onApply={applyBulkNodeEdit}
+        onClose={() => setBulkNodeEditOpen(false)}
       />
       <ToastContainer />
     </>
