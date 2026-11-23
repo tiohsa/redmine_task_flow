@@ -8,6 +8,7 @@ vendor/bundle/
 # Node / TypeScript / Vite
 node_modules/
 dist/
+build/
 .vite/
 *.log
 npm-debug.log*

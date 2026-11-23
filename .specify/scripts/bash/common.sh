@@ -223,12 +223,17 @@ get_feature_paths() {
         current_branch="${feature_dir_trimmed##*/}"
     fi
 
+    local feature_spec="$feature_dir/spec.md"
+    if [[ -f "$feature_dir/SPEC.md" ]]; then
+        feature_spec="$feature_dir/SPEC.md"
+    fi
+
     # Use printf '%q' to safely quote values, preventing shell injection
     # via crafted branch names or paths containing special characters
     printf 'REPO_ROOT=%q\n' "$repo_root"
     printf 'CURRENT_BRANCH=%q\n' "$current_branch"
     printf 'FEATURE_DIR=%q\n' "$feature_dir"
-    printf 'FEATURE_SPEC=%q\n' "$feature_dir/spec.md"
+    printf 'FEATURE_SPEC=%q\n' "$feature_spec"
     printf 'IMPL_PLAN=%q\n' "$feature_dir/plan.md"
     printf 'TASKS=%q\n' "$feature_dir/tasks.md"
     printf 'RESEARCH=%q\n' "$feature_dir/research.md"
