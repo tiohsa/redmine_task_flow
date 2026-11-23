@@ -28,6 +28,7 @@
 | [04-inspector-and-validation.md](04-inspector-and-validation.md) | インスペクタ・検証 | 折りたたみ・フォーカス制御、トラッカー別コアフィールド無効化、カスタムフィールド描画、クライアント側送信前バリデーション |
 | [05-persistence-and-bulk-create.md](05-persistence-and-bulk-create.md) | 永続化・一括登録 | `localStorage` 下書き自動保存・名前付きフロー保存（最大 5 件）、JSON エクスポート/インポート（ID フォールバック）、`bulk_create` API、結果モーダル、I18n |
 | [06-testing-and-verification.md](06-testing-and-verification.md) | テスト・検証 | Backend Minitest、Frontend Vitest、Docker 開発/テスト環境手順、実ブラウザ E2E 検証シナリオ |
+| [ノード属性の一括変更](bulk-node-edit/SPEC.md) | レビュー用ドラフト | 対象選択、項目指定、トラッカー連動、適用・取消、履歴と検証 |
 
 ## 3. 実装ファイル対応表
 
